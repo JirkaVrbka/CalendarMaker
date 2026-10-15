@@ -1,8 +1,8 @@
 /**
  * Vertical Ribbon layout (mockup 10): a full-bleed photo with a dark vertical
- * date STRIP down the right side listing every day top-to-bottom (number +
- * weekday abbreviation), a giant month number top-left over the photo, and the
- * month name + year below it.
+ * date STRIP down the right side listing every day top-to-bottom (day number
+ * only, no weekday abbreviation), a giant month number top-left over the
+ * photo, and the month name + year below it.
  *
  * The strip is fixed dark CHROME, so its day numbers are a fixed LIGHT ink
  * (STRIP_INK) — only weekends follow the style (Saturday/Sunday colors). The big
@@ -13,11 +13,7 @@
 import { Fragment } from 'react'
 import { Group, Layer, Line, Rect, Text } from 'react-konva'
 
-import {
-  getDaysInMonth,
-  getMonthName,
-  getWeekdayHeaders,
-} from '../../../lib/calendar'
+import { getDaysInMonth, getMonthName } from '../../../lib/calendar'
 import { ImageFrame } from '../ImageFrame'
 import {
   computeVerticalRibbonLayout,
@@ -29,8 +25,6 @@ import { isInteractive, type MonthLayoutProps } from './types'
 const STRIP_FILL = '#15171c'
 /** Fixed light ink for the strip day numbers (not style-driven). */
 const STRIP_INK = '#e6e8ec'
-/** Muted light ink for the strip weekday labels. */
-const STRIP_MUTED = '#8b93a1'
 /** Row divider on the dark strip. */
 const STRIP_DIVIDER = 'rgba(255,255,255,0.1)'
 /** Fixed light ink for the big number + month label over the photo. */
@@ -46,8 +40,6 @@ export function VerticalRibbonLayout(props: MonthLayoutProps) {
 
   const daysInMonth = getDaysInMonth(year, month)
   const monthName = getMonthName(year, month, language)
-  // Weekday abbreviations indexed by JS getDay() (Sunday-first order).
-  const weekdayNames = getWeekdayHeaders(0, language)
   const fontFamily = style.fontFamily
 
   const layout = computeVerticalRibbonLayout(size, daysInMonth)
@@ -135,7 +127,7 @@ export function VerticalRibbonLayout(props: MonthLayoutProps) {
           shadowOpacity={0.3}
         />
 
-        {/* Strip day rows: number + weekday, weekends style-colored. */}
+        {/* Strip day rows: number only, weekends style-colored. */}
         <Group>
           {Array.from({ length: daysInMonth }, (_, i) => {
             const day = i + 1
@@ -143,32 +135,21 @@ export function VerticalRibbonLayout(props: MonthLayoutProps) {
             const isSat = weekday === 6
             const isSun = weekday === 0
             const numColor = isSat ? style.saturday : isSun ? style.sunday : STRIP_INK
-            const wdColor = isSat ? style.saturday : isSun ? style.sunday : STRIP_MUTED
             const top = stripRowY(layout, i)
-            const centerY = top + layout.rowHeight / 2
             return (
               <Fragment key={`v-${day}`}>
                 <Text
                   x={layout.strip.x}
-                  y={centerY - layout.numberFontSize * 0.62}
+                  y={top}
                   width={layout.strip.width}
+                  height={layout.rowHeight}
                   text={String(day)}
                   align="center"
+                  verticalAlign="middle"
                   fontFamily={fontFamily}
                   fontSize={layout.numberFontSize}
                   fontStyle="700"
                   fill={numColor}
-                />
-                <Text
-                  x={layout.strip.x}
-                  y={centerY + layout.numberFontSize * 0.2}
-                  width={layout.strip.width}
-                  text={weekdayNames[weekday].slice(0, 2).toUpperCase()}
-                  align="center"
-                  fontFamily={fontFamily}
-                  fontSize={layout.weekdayFontSize}
-                  fontStyle="600"
-                  fill={wdColor}
                 />
                 {i < daysInMonth - 1 && (
                   <Line
