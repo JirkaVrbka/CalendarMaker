@@ -10,6 +10,7 @@ import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
+import IconButton from '@mui/material/IconButton'
 import Snackbar from '@mui/material/Snackbar'
 import Tooltip from '@mui/material/Tooltip'
 
@@ -32,6 +33,13 @@ export interface ExportButtonProps {
   readonly labels: ExportButtonLabels
   /** Chosen export quality; selects the DPI + JPEG quality preset. */
   readonly quality: ExportQuality
+  /**
+   * Icon-only variant for tight bars (e.g. the mobile top bar): renders a
+   * borderless `IconButton` instead of the contained text button. Defaults to
+   * false, in which case the full text button renders byte-identically to
+   * before.
+   */
+  readonly compact?: boolean
 }
 
 export function ExportButton({
@@ -39,6 +47,7 @@ export function ExportButton({
   images,
   labels,
   quality,
+  compact = false,
 }: ExportButtonProps) {
   // The PDF must always render on light/white paper, regardless of the app's
   // on-screen light/dark theme — so capture with a forced-light theme rather
@@ -79,6 +88,22 @@ export function ExportButton({
       <Tooltip title={labels.exportPdf}>
         {/* span wrapper so the tooltip still works while the button is disabled */}
         <span>
+          {compact ? (
+            <IconButton
+              color="primary"
+              size="small"
+              aria-label={labels.exportPdf}
+              onClick={handleExport}
+              disabled={busy}
+              aria-busy={busy}
+            >
+              {busy ? (
+                <CircularProgress size={20} color="inherit" />
+              ) : (
+                <FileDownloadOutlinedIcon />
+              )}
+            </IconButton>
+          ) : (
           <Button
             variant="contained"
             color="primary"
@@ -112,6 +137,7 @@ export function ExportButton({
           >
             {label}
           </Button>
+          )}
         </span>
       </Tooltip>
       <Snackbar

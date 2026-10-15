@@ -32,6 +32,7 @@ function renderNavigator(
   activeIndex = 0,
   onSelect = vi.fn(),
   railTitle?: string,
+  optionLayout?: 'list' | 'grid',
 ) {
   render(
     <ThemeProvider theme={createAppTheme('light')}>
@@ -45,6 +46,7 @@ function renderNavigator(
         coverLabel="Cover"
         navigatorLabel="Calendar pages"
         railTitle={railTitle}
+        optionLayout={optionLayout}
       />
     </ThemeProvider>,
   )
@@ -105,5 +107,14 @@ describe('PageNavigator', () => {
     expect(within(coverOption).getByTestId('page-navigator-index')).toHaveTextContent('—')
     const januaryOption = screen.getByRole('option', { name: 'January 2026' })
     expect(within(januaryOption).getByTestId('page-navigator-index')).toHaveTextContent('1')
+  })
+
+  it('renders all options and number badges in grid mode', () => {
+    renderNavigator(0, vi.fn(), undefined, 'grid')
+    const listbox = screen.getByRole('listbox', { name: 'Calendar pages' })
+    expect(within(listbox).getAllByRole('option')).toHaveLength(13)
+    // The per-page number badges are still present in grid mode.
+    expect(screen.getAllByTestId('page-navigator-index')).toHaveLength(13)
+    expect(screen.getByRole('option', { name: 'December 2026' })).toBeInTheDocument()
   })
 })

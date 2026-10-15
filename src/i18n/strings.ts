@@ -63,6 +63,15 @@ interface UiStrings {
   readonly sectionTypography: string
   readonly sectionCalendar: string
   readonly sectionLayout: string
+  /** Mobile bottom-tab labels (Pages / Preview / Edit views). */
+  readonly tabPages: string
+  readonly tabPreview: string
+  readonly tabEdit: string
+  /** Muted hint under the page on the mobile Preview view. */
+  readonly previewHint: string
+  /** Accessible names for the mobile Preview prev/next page controls. */
+  readonly previousPage: string
+  readonly nextPage: string
   readonly newReset: string
   readonly newResetConfirm: string
   readonly loading: string
@@ -118,6 +127,12 @@ const STRINGS: Record<Language, UiStrings> = {
     sectionTypography: 'Typography',
     sectionCalendar: 'Calendar',
     sectionLayout: 'Layout',
+    tabPages: 'Pages',
+    tabPreview: 'Preview',
+    tabEdit: 'Edit',
+    previewHint: 'Swipe or tap Edit to style this page',
+    previousPage: 'Previous page',
+    nextPage: 'Next page',
     newReset: 'New / Reset',
     newResetConfirm:
       'Start a new calendar? This clears the current calendar and all its photos.',
@@ -171,6 +186,12 @@ const STRINGS: Record<Language, UiStrings> = {
     sectionTypography: 'Typografie',
     sectionCalendar: 'Kalendář',
     sectionLayout: 'Rozvržení',
+    tabPages: 'Stránky',
+    tabPreview: 'Náhled',
+    tabEdit: 'Úpravy',
+    previewHint: 'Potáhněte nebo klepněte na Úpravy pro úpravu stránky',
+    previousPage: 'Předchozí stránka',
+    nextPage: 'Další stránka',
     newReset: 'Nový / Reset',
     newResetConfirm:
       'Začít nový kalendář? Tím se smaže aktuální kalendář i všechny jeho fotky.',

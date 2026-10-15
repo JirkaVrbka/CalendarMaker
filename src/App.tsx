@@ -40,6 +40,7 @@ import { FontControls } from './features/controls/FontControls'
 import { ImageControls } from './features/controls/ImageControls'
 import { LayoutPicker } from './features/controls/LayoutPicker'
 import { CoverPageCanvas } from './features/editor/CoverPageCanvas'
+import { MobileEditor } from './features/editor/MobileEditor'
 import { MonthPageCanvas } from './features/editor/MonthPageCanvas'
 import { useFileDrop } from './features/editor/useFileDrop'
 import { ExportButton } from './features/export/ExportButton'
@@ -137,6 +138,11 @@ function App() {
   // Initial theme follows the OS preference until the user picks one.
   const activeMode: ThemeMode = mode ?? (prefersDark ? 'dark' : 'light')
   const theme = useMemo(() => createAppTheme(activeMode), [activeMode])
+
+  // Below the `md` breakpoint we swap the desktop 3-column layout for the mobile
+  // bottom-tabs shell. In jsdom (tests) `useMediaQuery` returns false by default,
+  // so the test suite stays on the desktop path unless it mocks the hook.
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'))
 
   const strings = getStrings(language)
 
@@ -519,6 +525,230 @@ function App() {
     },
   ]
 
+  // The three editor view nodes, extracted so either layout (desktop columns or
+  // the mobile bottom-tabs shell) can mount them — only one layout renders at a
+  // time. The JSX is identical to the former inline desktop markup.
+  const railContent = (
+    <PageNavigator
+      key={`nav-${fontEpoch}`}
+      pages={project.pages}
+      activeIndex={activePageIndex}
+      onSelect={selectPage}
+      weekStart={project.weekStart}
+      language={language}
+      title={project.title}
+      subtitle={project.subtitle}
+      titlePosition={project.titlePosition}
+      subtitlePosition={project.subtitlePosition}
+      layout={project.layout}
+      style={project.style}
+      images={images}
+      coverLabel={strings.coverLabel}
+      navigatorLabel={strings.navigatorLabel}
+      railTitle={strings.pagesLabel}
+      optionLayout={isMobile ? 'grid' : 'list'}
+    />
+  )
+
+  // The preview "canvas" column: the glow backdrop, grid texture and the
+  // measured A4 sheet. The stage toolbar (the "Page X / 13" row) is rendered
+  // only when `showStageToolbar` is true — the desktop column keeps it, while
+  // the mobile Preview tab omits it (MobileEditor renders its own header there).
+  const buildPreview = (showStageToolbar: boolean) => (
+    /* Active page, fitted to the available space, floating on the paper
+       canvas with a soft accent glow and a faint grid texture behind it. */
+    <Box
+      sx={(theme) => ({
+        position: 'relative',
+        flexGrow: 1,
+        minWidth: 0,
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        // Accent radial glow spilling down from the top of the stage. The
+        // column is otherwise transparent so the paper canvas (set on the
+        // app root) shows through, matching the mockup's .stage.
+        backgroundImage: `radial-gradient(900px 500px at 50% 0%, color-mix(in srgb, ${theme.palette.primary.main} 5%, transparent), transparent 70%)`,
+      })}
+    >
+      {/* Decorative 28px grid texture behind the page: a line grid masked
+          to a soft central ellipse, dimmed and non-interactive. Purely
+          presentational (aria-hidden), positioned below the page content. */}
+      <Box
+        aria-hidden="true"
+        sx={(theme) => ({
+          position: 'absolute',
+          inset: 0,
+          zIndex: 0,
+          pointerEvents: 'none',
+          opacity: 0.5,
+          backgroundImage: `linear-gradient(${theme.tokens.hairline2} 1px, transparent 1px), linear-gradient(90deg, ${theme.tokens.hairline2} 1px, transparent 1px)`,
+          backgroundSize: '28px 28px',
+          maskImage:
+            'radial-gradient(ellipse 70% 70% at 50% 42%, #000 35%, transparent 78%)',
+          WebkitMaskImage:
+            'radial-gradient(ellipse 70% 70% at 50% 42%, #000 35%, transparent 78%)',
+        })}
+      />
+      {/* Stage toolbar: page indicator above the canvas (desktop only). */}
+      {showStageToolbar && (
+        <Box
+          sx={{
+            position: 'relative',
+            zIndex: 1,
+            flexShrink: 0,
+            px: { xs: 2, md: 3 },
+            py: 1.5,
+            display: 'flex',
+            alignItems: 'center',
+          }}
+        >
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            {strings.pageIndicator(
+              activePageIndex + 1,
+              project.pages.length,
+              pageLabel,
+            )}
+          </Typography>
+        </Box>
+      )}
+
+      {/* Measured canvas area. The ResizeObserver tracks this box's size
+          (see `ref`) so the A4 sheet fits the remaining space. */}
+      <Box
+        ref={ref}
+        sx={{
+          position: 'relative',
+          zIndex: 1,
+          flexGrow: 1,
+          minHeight: 0,
+          p: { xs: 2, md: 4 },
+          pt: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {/* Floating sheet wrapper: shrink-wraps the canvas and carries the
+            page drop shadow so the A4 sheet floats above the backdrop.
+            Also the drop target for dragging an image file in from the OS
+            (positioned so the drop overlay can cover exactly this sheet). */}
+        <Box
+          {...dropHandlers}
+          sx={(theme) => ({
+            position: 'relative',
+            boxShadow: theme.tokens.shadow.page,
+            lineHeight: 0,
+          })}
+        >
+          {/* Drop overlay: shown only while an image file is dragged over
+              the sheet. Non-interactive so it never swallows the drop. */}
+          {isDragging && (
+            <Box
+              aria-hidden="true"
+              sx={(theme) => ({
+                position: 'absolute',
+                inset: 0,
+                zIndex: 2,
+                pointerEvents: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '2px dashed',
+                borderColor: 'primary.main',
+                borderRadius: `${theme.tokens.radius.md}px`,
+                backgroundColor: theme.tokens.accentTint,
+              })}
+            >
+              <Typography
+                variant="h6"
+                sx={{ color: 'primary.main', fontWeight: 600 }}
+              >
+                {strings.dropPhotoHere}
+              </Typography>
+            </Box>
+          )}
+          {(() => {
+            switch (activePage.kind) {
+              case 'cover':
+                return (
+                  <CoverPageCanvas
+                    key={`cover-${fontEpoch}`}
+                    title={project.title}
+                    subtitle={project.subtitle}
+                    titlePosition={project.titlePosition}
+                    subtitlePosition={project.subtitlePosition}
+                    size={pageSize}
+                    style={project.style}
+                    imageUrl={activeEntry?.url}
+                    imageTransform={activeEntry?.transform}
+                    onTransformChange={applyTransform}
+                    onTitleMove={setTitlePosition}
+                    onSubtitleMove={setSubtitlePosition}
+                  />
+                )
+              case 'month':
+                return (
+                  <MonthPageCanvas
+                    key={`month-${activePage.year}-${activePage.month}-${fontEpoch}`}
+                    year={activePage.year}
+                    month={activePage.month}
+                    weekStart={project.weekStart}
+                    language={language}
+                    size={pageSize}
+                    title={project.title}
+                    subtitle={project.subtitle}
+                    style={project.style}
+                    layout={project.layout}
+                    imageUrl={activeEntry?.url}
+                    imageTransform={activeEntry?.transform}
+                    onTransformChange={applyTransform}
+                  />
+                )
+              default:
+                return assertNever(activePage)
+            }
+          })()}
+        </Box>
+      </Box>
+    </Box>
+  )
+
+  const panelContent = (
+    <ControlsPanel
+      ariaLabel={strings.controlsPanelLabel}
+      sections={sections}
+      head={
+        <>
+          {/* Active page label in the display (Fraunces) voice. */}
+          <Typography
+            component="h2"
+            variant="h6"
+            sx={{
+              m: 0,
+              fontSize: '1rem',
+              fontWeight: 600,
+              letterSpacing: '-0.01em',
+              lineHeight: 1.2,
+              color: 'text.primary',
+            }}
+          >
+            {pageLabel}
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{ display: 'block', mt: 0.5, color: 'text.secondary' }}
+          >
+            {strings.panelEditingNote(
+              activePageIndex + 1,
+              project.pages.length,
+            )}
+          </Typography>
+        </>
+      }
+    />
+  )
+
   // Brief loading state while the initial load/hydration is in flight.
   if (!hydrated) {
     return (
@@ -537,6 +767,78 @@ function App() {
           <CircularProgress />
           <Typography color="text.secondary">{strings.loading}</Typography>
         </Box>
+      </ThemeProvider>
+    )
+  }
+
+  // Mobile layout: the bottom-tabs shell. Mounts the same three view nodes as
+  // the desktop columns; only one layout renders at a time.
+  if (isMobile) {
+    return (
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <MobileEditor
+          brand={
+            <>
+              <BrandMark />
+              <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                <Typography
+                  component="span"
+                  variant="subtitle1"
+                  sx={{ lineHeight: 1.1, fontWeight: 600, color: 'text.primary' }}
+                >
+                  Calendar
+                  <Box
+                    component="span"
+                    sx={{ fontWeight: 400, color: 'text.secondary' }}
+                  >
+                    Maker
+                  </Box>
+                </Typography>
+              </Box>
+            </>
+          }
+          pageLabel={pageLabel}
+          pageIndex={activePageIndex + 1}
+          pageTotal={project.pages.length}
+          themeMode={activeMode}
+          onToggleTheme={() => setMode(activeMode === 'dark' ? 'light' : 'dark')}
+          onReset={handleReset}
+          onPrev={() => selectPage(Math.max(0, activePageIndex - 1))}
+          onNext={() =>
+            selectPage(Math.min(project.pages.length - 1, activePageIndex + 1))
+          }
+          canPrev={activePageIndex > 0}
+          canNext={activePageIndex < project.pages.length - 1}
+          exportNode={
+            <ExportButton
+              compact
+              project={project}
+              images={images}
+              quality={exportQuality}
+              labels={{
+                exportPdf: strings.exportPdf,
+                exportError: strings.exportError,
+                progress: strings.exportProgress,
+              }}
+            />
+          }
+          pagesView={railContent}
+          previewView={buildPreview(false)}
+          editView={panelContent}
+          labels={{
+            appTitle: strings.appTitle,
+            pages: strings.tabPages,
+            preview: strings.tabPreview,
+            edit: strings.tabEdit,
+            toggleTheme: strings.toggleTheme,
+            newReset: strings.newReset,
+            pageIndicator: strings.pageIndicator,
+            previewHint: strings.previewHint,
+            previous: strings.previousPage,
+            next: strings.nextPage,
+          }}
+        />
       </ThemeProvider>
     )
   }
@@ -700,183 +1002,12 @@ function App() {
               overflowY: 'auto',
             })}
           >
-            <PageNavigator
-              key={`nav-${fontEpoch}`}
-              pages={project.pages}
-              activeIndex={activePageIndex}
-              onSelect={selectPage}
-              weekStart={project.weekStart}
-              language={language}
-              title={project.title}
-              subtitle={project.subtitle}
-              titlePosition={project.titlePosition}
-              subtitlePosition={project.subtitlePosition}
-              layout={project.layout}
-              style={project.style}
-              images={images}
-              coverLabel={strings.coverLabel}
-              navigatorLabel={strings.navigatorLabel}
-              railTitle={strings.pagesLabel}
-            />
+            {railContent}
           </Box>
 
           <Divider orientation="vertical" flexItem />
 
-          {/* Active page, fitted to the available space, floating on the paper
-              canvas with a soft accent glow and a faint grid texture behind it. */}
-          <Box
-            sx={(theme) => ({
-              position: 'relative',
-              flexGrow: 1,
-              minWidth: 0,
-              minHeight: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              // Accent radial glow spilling down from the top of the stage. The
-              // column is otherwise transparent so the paper canvas (set on the
-              // app root) shows through, matching the mockup's .stage.
-              backgroundImage: `radial-gradient(900px 500px at 50% 0%, color-mix(in srgb, ${theme.palette.primary.main} 5%, transparent), transparent 70%)`,
-            })}
-          >
-            {/* Decorative 28px grid texture behind the page: a line grid masked
-                to a soft central ellipse, dimmed and non-interactive. Purely
-                presentational (aria-hidden), positioned below the page content. */}
-            <Box
-              aria-hidden="true"
-              sx={(theme) => ({
-                position: 'absolute',
-                inset: 0,
-                zIndex: 0,
-                pointerEvents: 'none',
-                opacity: 0.5,
-                backgroundImage: `linear-gradient(${theme.tokens.hairline2} 1px, transparent 1px), linear-gradient(90deg, ${theme.tokens.hairline2} 1px, transparent 1px)`,
-                backgroundSize: '28px 28px',
-                maskImage:
-                  'radial-gradient(ellipse 70% 70% at 50% 42%, #000 35%, transparent 78%)',
-                WebkitMaskImage:
-                  'radial-gradient(ellipse 70% 70% at 50% 42%, #000 35%, transparent 78%)',
-              })}
-            />
-            {/* Stage toolbar: page indicator above the canvas. */}
-            <Box
-              sx={{
-                position: 'relative',
-                zIndex: 1,
-                flexShrink: 0,
-                px: { xs: 2, md: 3 },
-                py: 1.5,
-                display: 'flex',
-                alignItems: 'center',
-              }}
-            >
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                {strings.pageIndicator(
-                  activePageIndex + 1,
-                  project.pages.length,
-                  pageLabel,
-                )}
-              </Typography>
-            </Box>
-
-            {/* Measured canvas area. The ResizeObserver tracks this box's size
-                (see `ref`) so the A4 sheet fits the remaining space. */}
-            <Box
-              ref={ref}
-              sx={{
-                position: 'relative',
-                zIndex: 1,
-                flexGrow: 1,
-                minHeight: 0,
-                p: { xs: 2, md: 4 },
-                pt: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              {/* Floating sheet wrapper: shrink-wraps the canvas and carries the
-                  page drop shadow so the A4 sheet floats above the backdrop.
-                  Also the drop target for dragging an image file in from the OS
-                  (positioned so the drop overlay can cover exactly this sheet). */}
-              <Box
-                {...dropHandlers}
-                sx={(theme) => ({
-                  position: 'relative',
-                  boxShadow: theme.tokens.shadow.page,
-                  lineHeight: 0,
-                })}
-              >
-                {/* Drop overlay: shown only while an image file is dragged over
-                    the sheet. Non-interactive so it never swallows the drop. */}
-                {isDragging && (
-                  <Box
-                    aria-hidden="true"
-                    sx={(theme) => ({
-                      position: 'absolute',
-                      inset: 0,
-                      zIndex: 2,
-                      pointerEvents: 'none',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      border: '2px dashed',
-                      borderColor: 'primary.main',
-                      borderRadius: `${theme.tokens.radius.md}px`,
-                      backgroundColor: theme.tokens.accentTint,
-                    })}
-                  >
-                    <Typography
-                      variant="h6"
-                      sx={{ color: 'primary.main', fontWeight: 600 }}
-                    >
-                      {strings.dropPhotoHere}
-                    </Typography>
-                  </Box>
-                )}
-                {(() => {
-                  switch (activePage.kind) {
-                    case 'cover':
-                      return (
-                        <CoverPageCanvas
-                          key={`cover-${fontEpoch}`}
-                          title={project.title}
-                          subtitle={project.subtitle}
-                          titlePosition={project.titlePosition}
-                          subtitlePosition={project.subtitlePosition}
-                          size={pageSize}
-                          style={project.style}
-                          imageUrl={activeEntry?.url}
-                          imageTransform={activeEntry?.transform}
-                          onTransformChange={applyTransform}
-                          onTitleMove={setTitlePosition}
-                          onSubtitleMove={setSubtitlePosition}
-                        />
-                      )
-                    case 'month':
-                      return (
-                        <MonthPageCanvas
-                          key={`month-${activePage.year}-${activePage.month}-${fontEpoch}`}
-                          year={activePage.year}
-                          month={activePage.month}
-                          weekStart={project.weekStart}
-                          language={language}
-                          size={pageSize}
-                          title={project.title}
-                          subtitle={project.subtitle}
-                          style={project.style}
-                          layout={project.layout}
-                          imageUrl={activeEntry?.url}
-                          imageTransform={activeEntry?.transform}
-                          onTransformChange={applyTransform}
-                        />
-                      )
-                    default:
-                      return assertNever(activePage)
-                  }
-                })()}
-              </Box>
-            </Box>
-          </Box>
+          {buildPreview(true)}
 
           {/* Right-hand collapsible controls panel */}
           <Box
@@ -888,38 +1019,7 @@ function App() {
               bgcolor: theme.tokens.surface,
             })}
           >
-            <ControlsPanel
-              ariaLabel={strings.controlsPanelLabel}
-              sections={sections}
-              head={
-                <>
-                  {/* Active page label in the display (Fraunces) voice. */}
-                  <Typography
-                    component="h2"
-                    variant="h6"
-                    sx={{
-                      m: 0,
-                      fontSize: '1rem',
-                      fontWeight: 600,
-                      letterSpacing: '-0.01em',
-                      lineHeight: 1.2,
-                      color: 'text.primary',
-                    }}
-                  >
-                    {pageLabel}
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{ display: 'block', mt: 0.5, color: 'text.secondary' }}
-                  >
-                    {strings.panelEditingNote(
-                      activePageIndex + 1,
-                      project.pages.length,
-                    )}
-                  </Typography>
-                </>
-              }
-            />
+            {panelContent}
           </Box>
         </Box>
       </Box>

@@ -41,7 +41,7 @@ function makeProject(): CalendarProject {
   }
 }
 
-function renderButton() {
+function renderButton(compact = false) {
   const project = makeProject()
   const images = {}
   render(
@@ -51,6 +51,7 @@ function renderButton() {
         images={images}
         labels={labels}
         quality="balanced"
+        compact={compact}
       />
     </ThemeProvider>,
   )
@@ -112,5 +113,20 @@ describe('ExportButton', () => {
     await waitFor(() =>
       expect(screen.getByRole('button', { name: /export pdf/i })).toBeEnabled(),
     )
+  })
+
+  it('renders an icon-only button that keeps the accessible name and triggers export in compact mode', async () => {
+    mockedExport.mockResolvedValue(undefined)
+    const { project, images } = renderButton(true)
+
+    // Icon-only variant: no visible "Export PDF" text, but the accessible name
+    // (from aria-label) is preserved for screen readers and queries.
+    expect(screen.queryByText('Export PDF')).toBeNull()
+    const button = screen.getByRole('button', { name: /export pdf/i })
+
+    await userEvent.click(button)
+
+    expect(mockedExport).toHaveBeenCalledTimes(1)
+    expect(mockedExport).toHaveBeenCalledWith(project, images, expect.anything())
   })
 })

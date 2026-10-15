@@ -147,6 +147,14 @@ export interface PageNavigatorProps {
    * the page count in a small pill. Omit to render the rail with no header.
    */
   readonly railTitle?: string
+  /**
+   * How the options are arranged: a vertical `'list'` (desktop rail, default) or
+   * a responsive `'grid'` of cells (mobile Pages tab). Selection, keyboard
+   * handling and a11y are identical in both; only the container layout differs.
+   * (Named `optionLayout` because `layout` above already carries the page
+   * `LayoutId` forwarded to the thumbnails.)
+   */
+  readonly optionLayout?: 'list' | 'grid'
 }
 
 export function PageNavigator({
@@ -165,6 +173,7 @@ export function PageNavigator({
   coverLabel,
   navigatorLabel,
   railTitle,
+  optionLayout = 'list',
 }: PageNavigatorProps) {
   const optionRefs = useRef<Array<HTMLDivElement | null>>([])
   const thumb = fitPageSize(A4_PORTRAIT, THUMB_BOX)
@@ -261,15 +270,28 @@ export function PageNavigator({
         aria-label={navigatorLabel}
         aria-orientation="vertical"
         onKeyDown={handleKeyDown}
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 1,
-          p: 1,
-          overflowY: 'auto',
-          flex: 1,
-          minHeight: 0,
-        }}
+        sx={
+          optionLayout === 'grid'
+            ? {
+                // Mobile Pages tab: responsive grid of page cells.
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))',
+                gap: 1,
+                p: 1,
+                overflowY: 'auto',
+                flex: 1,
+                minHeight: 0,
+              }
+            : {
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1,
+                p: 1,
+                overflowY: 'auto',
+                flex: 1,
+                minHeight: 0,
+              }
+        }
       >
         {pages.map((page, index) => {
           const selected = index === activeIndex
