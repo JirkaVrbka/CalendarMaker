@@ -87,8 +87,13 @@ describe('getMonthName', () => {
   })
 
   it('returns Czech month names', () => {
-    expect(getMonthName(2024, 0, 'cs')).toBe('leden')
-    expect(getMonthName(2024, 1, 'cs')).toBe('únor')
+    expect(getMonthName(2024, 0, 'cs')).toBe('Leden')
+    expect(getMonthName(2024, 1, 'cs')).toBe('Únor')
+  })
+
+  it('capitalizes Czech month names and leaves English unchanged', () => {
+    expect(getMonthName(2026, 1, 'cs').startsWith('Ú')).toBe(true)
+    expect(getMonthName(2026, 0, 'en')).toBe('January')
   })
 })
 

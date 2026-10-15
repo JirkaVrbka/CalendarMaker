@@ -15,6 +15,8 @@ import Tooltip from '@mui/material/Tooltip'
 
 import { createAppTheme } from '../../app/theme'
 import type { CalendarProject, ImageEntry } from '../../types/calendar'
+import { EXPORT_PRESETS } from './exportGeometry'
+import type { ExportQuality } from './exportGeometry'
 import { exportCalendarPdf } from './exportCalendarPdf'
 import type { ExportProgress } from './exportCalendarPdf'
 
@@ -28,9 +30,16 @@ export interface ExportButtonProps {
   readonly project: CalendarProject
   readonly images: Readonly<Record<number, ImageEntry>>
   readonly labels: ExportButtonLabels
+  /** Chosen export quality; selects the DPI + JPEG quality preset. */
+  readonly quality: ExportQuality
 }
 
-export function ExportButton({ project, images, labels }: ExportButtonProps) {
+export function ExportButton({
+  project,
+  images,
+  labels,
+  quality,
+}: ExportButtonProps) {
   // The PDF must always render on light/white paper, regardless of the app's
   // on-screen light/dark theme — so capture with a forced-light theme rather
   // than the active one (built once; the editor's own theme is unaffected).
@@ -45,9 +54,12 @@ export function ExportButton({ project, images, labels }: ExportButtonProps) {
     setProgress(null)
     setBusy(true)
     try {
+      const preset = EXPORT_PRESETS[quality]
       await exportCalendarPdf(project, images, {
         theme: exportTheme,
         onProgress: setProgress,
+        dpi: preset.dpi,
+        jpegQuality: preset.jpegQuality,
       })
     } catch {
       setErrorOpen(true)

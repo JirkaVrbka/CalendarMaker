@@ -20,15 +20,16 @@ export function isWeekend(date: Date): boolean {
 }
 
 /**
- * Localized full month name, e.g. `getMonthName(2026, 0, 'cs')` → "leden".
+ * Localized full month name, e.g. `getMonthName(2026, 0, 'cs')` → "Leden".
  * Uses a UTC-anchored date so the result never shifts across time zones.
  */
 export function getMonthName(year: number, month: number, lang: Language): string {
   const date = new Date(Date.UTC(year, month, 1))
-  return new Intl.DateTimeFormat(lang, {
+  const name = new Intl.DateTimeFormat(lang, {
     month: 'long',
     timeZone: 'UTC',
   }).format(date)
+  return name.charAt(0).toLocaleUpperCase(lang) + name.slice(1)
 }
 
 /**

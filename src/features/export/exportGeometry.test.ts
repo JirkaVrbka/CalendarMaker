@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 
 import {
   computeExportPixelSize,
+  DEFAULT_EXPORT_QUALITY,
   DEFAULT_PDF_FILENAME,
   EXPORT_DPI,
+  EXPORT_PRESETS,
   pdfFilename,
 } from './exportGeometry'
 
@@ -25,6 +27,30 @@ describe('computeExportPixelSize', () => {
     const size = computeExportPixelSize(EXPORT_DPI)
     expect(size.height).toBeGreaterThan(size.width)
     expect(size.width / size.height).toBeCloseTo(210 / 297, 3)
+  })
+})
+
+describe('EXPORT_PRESETS', () => {
+  it('maps each quality to its documented DPI + JPEG quality', () => {
+    expect(EXPORT_PRESETS.small).toEqual({ dpi: 150, jpegQuality: 0.82 })
+    expect(EXPORT_PRESETS.balanced).toEqual({ dpi: 220, jpegQuality: 0.9 })
+    expect(EXPORT_PRESETS.max).toEqual({ dpi: 300, jpegQuality: 0.95 })
+  })
+
+  it('higher presets have strictly higher DPI and JPEG quality', () => {
+    expect(EXPORT_PRESETS.small.dpi).toBeLessThan(EXPORT_PRESETS.balanced.dpi)
+    expect(EXPORT_PRESETS.balanced.dpi).toBeLessThan(EXPORT_PRESETS.max.dpi)
+    expect(EXPORT_PRESETS.small.jpegQuality).toBeLessThan(
+      EXPORT_PRESETS.balanced.jpegQuality,
+    )
+    expect(EXPORT_PRESETS.balanced.jpegQuality).toBeLessThan(
+      EXPORT_PRESETS.max.jpegQuality,
+    )
+  })
+
+  it('defaults to the balanced preset', () => {
+    expect(DEFAULT_EXPORT_QUALITY).toBe('balanced')
+    expect(EXPORT_PRESETS[DEFAULT_EXPORT_QUALITY]).toBe(EXPORT_PRESETS.balanced)
   })
 })
 

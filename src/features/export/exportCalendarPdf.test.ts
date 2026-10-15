@@ -73,7 +73,7 @@ describe('exportCalendarPdf', () => {
     expect(save).toHaveBeenCalledTimes(1)
   })
 
-  it('constructs a jsPDF A4 portrait document in millimetres', async () => {
+  it('constructs a compressed jsPDF A4 portrait document in millimetres', async () => {
     await exportCalendarPdf(
       makeProject(),
       {},
@@ -83,6 +83,7 @@ describe('exportCalendarPdf', () => {
       format: 'a4',
       orientation: 'portrait',
       unit: 'mm',
+      compress: true,
     })
   })
 
@@ -96,8 +97,22 @@ describe('exportCalendarPdf', () => {
     await exportCalendarPdf(makeProject(), {}, { theme: fakeTheme, capture })
 
     expect(seen).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
-    // Each image fills 210 × 297 mm at the page origin.
-    expect(addImage).toHaveBeenCalledWith('d', 'PNG', 0, 0, 210, 297)
+    // Each image fills 210 × 297 mm at the page origin, placed as JPEG.
+    expect(addImage).toHaveBeenCalledWith('d', 'JPEG', 0, 0, 210, 297)
+  })
+
+  it('captures pages as JPEG at the requested quality', async () => {
+    const capture = vi.fn((_input: CapturePageInput) => Promise.resolve('d'))
+
+    await exportCalendarPdf(
+      makeProject(),
+      {},
+      { theme: fakeTheme, capture, jpegQuality: 0.82 },
+    )
+
+    expect(capture).toHaveBeenCalledWith(
+      expect.objectContaining({ mimeType: 'image/jpeg', quality: 0.82 }),
+    )
   })
 
   it('places the first image before the first page break (correct ordering)', async () => {

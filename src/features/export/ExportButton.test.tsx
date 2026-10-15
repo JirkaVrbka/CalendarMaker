@@ -46,7 +46,12 @@ function renderButton() {
   const images = {}
   render(
     <ThemeProvider theme={createAppTheme('light')}>
-      <ExportButton project={project} images={images} labels={labels} />
+      <ExportButton
+        project={project}
+        images={images}
+        labels={labels}
+        quality="balanced"
+      />
     </ThemeProvider>,
   )
   return { project, images }
@@ -73,6 +78,9 @@ describe('ExportButton', () => {
         theme: expect.objectContaining({
           palette: expect.objectContaining({ mode: 'light' }),
         }),
+        // The chosen quality preset ("balanced") drives DPI + JPEG quality.
+        dpi: 220,
+        jpegQuality: 0.9,
       }),
     )
   })

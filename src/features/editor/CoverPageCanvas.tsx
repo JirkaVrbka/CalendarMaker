@@ -66,6 +66,31 @@ export interface CoverPageCanvasProps {
   readonly stageRef?: Ref<Konva.Stage>
 }
 
+// Cached offscreen canvas 2D context used to measure the ACTUAL rendered width
+// of cover text. `estimateTextWidth` (coverTextLayout.ts) is a crude
+// char-count-based approximation that undershoots wide text, which previously
+// made the Text node's `width` (with `wrap="none"`) too narrow and truncated
+// the tail of longer titles/subtitles. Measuring with the same font Konva
+// actually draws eliminates that mismatch; the estimate remains as a fallback
+// for environments without a canvas 2D context (e.g. jsdom in tests).
+let measureCtx: CanvasRenderingContext2D | null | undefined
+function measureTextWidth(
+  text: string,
+  fontSize: number,
+  bold: boolean,
+  fontFamily: string,
+): number | undefined {
+  if (measureCtx === undefined) {
+    measureCtx = typeof document !== 'undefined'
+      ? document.createElement('canvas').getContext('2d')
+      : null
+  }
+  if (!measureCtx) return undefined
+  measureCtx.font = `${bold ? 700 : 400} ${fontSize}px ${fontFamily}`
+  const w = measureCtx.measureText(text).width
+  return w > 0 ? w : undefined
+}
+
 /** A single draggable (or static) cover text, center-anchored by page fraction. */
 function CoverText({
   text,
@@ -86,11 +111,23 @@ function CoverText({
   readonly fill: string
   readonly onMove?: (position: TextPosition) => void
 }) {
-  // Hit area kept tight to the text (estimated from the glyph count + font size,
-  // capped to the printable width) so the photo below stays pannable elsewhere.
+  // Box width: measure the ACTUAL rendered width with the same font Konva
+  // draws with (plus a tiny safety pad so sub-pixel differences never clip
+  // the last glyph), falling back to the char-count estimate when no canvas
+  // 2D context is available (e.g. jsdom in tests). Capped to the printable
+  // width so the hit area never spills past the page.
   const maxWidth = size.width * 0.9
-  const textW = Math.min(estimateTextWidth(text, fontSize), maxWidth)
-  const textH = fontSize * 1.3
+  const measured = measureTextWidth(text, fontSize, bold, fontFamily)
+  const naturalW = measured !== undefined ? measured + fontSize * 0.1 : estimateTextWidth(text, fontSize)
+  // If the title/subtitle is wider than the printable area even at its
+  // configured font size, shrink the font to fit rather than truncating it
+  // (Konva clips to `width` with `wrap="none"`, so an over-wide box would cut
+  // off the tail of the text instead of shrinking it). fitScale is 1 (no-op)
+  // for text that already fits.
+  const fitScale = naturalW > maxWidth ? maxWidth / naturalW : 1
+  const effFontSize = fontSize * fitScale
+  const textW = Math.min(naturalW, maxWidth)
+  const textH = effFontSize * 1.3
   const topLeft = coverTextLayout(position, size, textW, textH)
   const interactive = Boolean(onMove)
 
@@ -109,6 +146,33 @@ function CoverText({
     onMove?.(topLeftToCenterFraction(node.x(), node.y(), size, textW, textH))
   }
 
+  // Cursor affordance: a "grab" hand while hovering a moveable text, and a
+  // "grabbing" fist while actually dragging it. `getStage()` can be null for
+  // an unmounted/detached node, so each handler guards against that.
+  function setCursor(event: KonvaEventObject<Event | DragEvent>, cursor: string) {
+    const stage = event.target.getStage()
+    if (stage) stage.container().style.cursor = cursor
+  }
+
+  function handleMouseEnter(event: KonvaEventObject<MouseEvent>) {
+    setCursor(event, 'grab')
+  }
+
+  function handleMouseLeave(event: KonvaEventObject<MouseEvent>) {
+    setCursor(event, 'default')
+  }
+
+  function handleDragStart(event: KonvaEventObject<DragEvent>) {
+    setCursor(event, 'grabbing')
+  }
+
+  function handleDragEndWithCursor(event: KonvaEventObject<DragEvent>) {
+    // Pointer is still over the node once the drag ends, so "grab" (not
+    // "default") is the correct resting cursor; still run the position commit.
+    setCursor(event, 'grab')
+    handleDragEnd(event)
+  }
+
   return (
     <Text
       x={topLeft.x}
@@ -120,12 +184,15 @@ function CoverText({
       verticalAlign="middle"
       wrap="none"
       fontFamily={fontFamily}
-      fontSize={fontSize}
+      fontSize={effFontSize}
       fontStyle={bold ? '700' : '400'}
       fill={fill}
       draggable={interactive}
       onDragMove={interactive ? handleDragMove : undefined}
-      onDragEnd={interactive ? handleDragEnd : undefined}
+      onDragEnd={interactive ? handleDragEndWithCursor : undefined}
+      onMouseEnter={interactive ? handleMouseEnter : undefined}
+      onMouseLeave={interactive ? handleMouseLeave : undefined}
+      onDragStart={interactive ? handleDragStart : undefined}
     />
   )
 }

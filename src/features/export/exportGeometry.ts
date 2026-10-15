@@ -8,6 +8,33 @@ import { A4_PORTRAIT, type PixelSize } from '../../lib/page'
 /** Print resolution for the exported pages. 300 DPI is print-quality. */
 export const EXPORT_DPI = 300
 
+/** The three export-quality presets the user can pick between. */
+export type ExportQuality = 'small' | 'balanced' | 'max'
+
+/**
+ * A quality preset: the print resolution and the JPEG quality the pages are
+ * encoded at. Lower values mean a smaller PDF; higher values mean sharper print
+ * at the cost of file size.
+ */
+export interface ExportPreset {
+  readonly dpi: number
+  readonly jpegQuality: number
+}
+
+/**
+ * Trade-offs between file size and print fidelity. "small" is screen/email
+ * friendly, "max" matches the previous 300 DPI print quality, "balanced" is the
+ * sensible default in between.
+ */
+export const EXPORT_PRESETS: Record<ExportQuality, ExportPreset> = {
+  small: { dpi: 150, jpegQuality: 0.82 },
+  balanced: { dpi: 220, jpegQuality: 0.9 },
+  max: { dpi: 300, jpegQuality: 0.95 },
+}
+
+/** Default quality when the user hasn't chosen one. */
+export const DEFAULT_EXPORT_QUALITY: ExportQuality = 'balanced'
+
 /** Millimetres per inch (ISO/imperial constant). */
 const MM_PER_INCH = 25.4
 

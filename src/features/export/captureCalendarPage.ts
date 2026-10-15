@@ -4,7 +4,8 @@
  * truly WYSIWYG with no second layout engine — but at the full export pixel size
  * rather than the on-screen size. It mounts a throwaway React root in a hidden,
  * detached container, waits for the page's photo to be decoded and drawn, then
- * snapshots the Konva `Stage` to a PNG data-URL and tears the root down.
+ * snapshots the Konva `Stage` to a data-URL (JPEG by default) and tears the
+ * root down.
  *
  * This runs only in a real browser (it needs a live canvas), so it is never
  * unit-tested directly: the orchestration (`exportCalendarPdf`) accepts it as an
@@ -33,9 +34,16 @@ export interface CapturePageInput {
   readonly size: PixelSize
   /** MUI theme to render with, so exported colors match the screen. */
   readonly theme: Theme
+  /**
+   * Snapshot encoding. Defaults to JPEG, which keeps photo pages far smaller
+   * than lossless PNG; PNG stays available for callers that need it.
+   */
+  readonly mimeType?: 'image/jpeg' | 'image/png'
+  /** JPEG quality (0..1) when `mimeType` is JPEG. Defaults to 0.9. */
+  readonly quality?: number
 }
 
-/** Renders a page and returns its PNG snapshot as a data-URL. */
+/** Renders a page and returns its snapshot as a data-URL. */
 export type CapturePageFn = (input: CapturePageInput) => Promise<string>
 
 /** Hard cap so a stuck image load can never hang the whole export. */
@@ -177,7 +185,9 @@ export const captureCalendarPage: CapturePageFn = async (input) => {
     // Force a synchronous redraw so the very latest scene is on the canvas
     // before we serialize it.
     stage.draw()
-    return stage.toDataURL({ mimeType: 'image/png', pixelRatio: 1 })
+    const mimeType = input.mimeType ?? 'image/jpeg'
+    const quality = input.quality ?? 0.9
+    return stage.toDataURL({ mimeType, quality, pixelRatio: 1 })
   } finally {
     // Dispose this page's root + container before the next page so 13 huge
     // canvases never live at once.

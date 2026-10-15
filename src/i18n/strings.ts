@@ -24,6 +24,8 @@ interface UiStrings {
   readonly pagesLabel: string
   /** Hint telling the user the photo can be dragged on the canvas. */
   readonly imageDragHint: string
+  /** Overlay label shown when dragging an image file over the page preview. */
+  readonly dropPhotoHere: string
   /** Stage toolbar page indicator, e.g. "Page 4 / 13 · March". */
   readonly pageIndicator: (
     current: number,
@@ -68,6 +70,10 @@ interface UiStrings {
   readonly exportError: string
   /** Progress label shown while exporting, e.g. "Page 3 / 13". */
   readonly exportProgress: (current: number, total: number) => string
+  readonly exportQualityLabel: string
+  readonly exportQualitySmall: string
+  readonly exportQualityBalanced: string
+  readonly exportQualityMax: string
 }
 
 const STRINGS: Record<Language, UiStrings> = {
@@ -86,6 +92,7 @@ const STRINGS: Record<Language, UiStrings> = {
     savedLocally: 'saved locally',
     pagesLabel: 'Pages',
     imageDragHint: 'Drag the photo on the canvas to reposition it.',
+    dropPhotoHere: 'Drop photo here',
     pageIndicator: (current, total, pageLabel) =>
       `Page ${current} / ${total} · ${pageLabel}`,
     uploadImage: 'Upload photo',
@@ -118,6 +125,10 @@ const STRINGS: Record<Language, UiStrings> = {
     exportPdf: 'Export PDF',
     exportError: 'PDF export failed. Please try again.',
     exportProgress: (current, total) => `Page ${current} / ${total}`,
+    exportQualityLabel: 'Export quality',
+    exportQualitySmall: 'Smaller file',
+    exportQualityBalanced: 'Balanced',
+    exportQualityMax: 'Max quality',
   },
   cs: {
     appTitle: 'CalendarMaker',
@@ -134,6 +145,7 @@ const STRINGS: Record<Language, UiStrings> = {
     savedLocally: 'uloženo v prohlížeči',
     pagesLabel: 'Stránky',
     imageDragHint: 'Fotku přesuňte přímo na plátně.',
+    dropPhotoHere: 'Sem přetáhněte fotku',
     pageIndicator: (current, total, pageLabel) =>
       `Strana ${current} / ${total} · ${pageLabel}`,
     uploadImage: 'Nahrát fotku',
@@ -166,6 +178,10 @@ const STRINGS: Record<Language, UiStrings> = {
     exportPdf: 'Exportovat PDF',
     exportError: 'Export PDF se nezdařil. Zkuste to prosím znovu.',
     exportProgress: (current, total) => `Strana ${current} / ${total}`,
+    exportQualityLabel: 'Kvalita exportu',
+    exportQualitySmall: 'Menší soubor',
+    exportQualityBalanced: 'Vyvážené',
+    exportQualityMax: 'Nejvyšší kvalita',
   },
 }
 

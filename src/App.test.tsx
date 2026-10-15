@@ -1,4 +1,11 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  createEvent,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 
@@ -37,10 +44,41 @@ vi.mock('./features/storage/service', () => ({
 
 import App from './App'
 import { useProjectStore } from './app/store'
-import { clearAll, loadAll } from './features/storage/service'
+import { clearAll, loadAll, putImage } from './features/storage/service'
 
 const mockedLoadAll = vi.mocked(loadAll)
 const mockedClearAll = vi.mocked(clearAll)
+const mockedPutImage = vi.mocked(putImage)
+
+/** A DataTransfer-like object for a file drag carrying the given files. */
+function fileTransfer(files: File[]): DataTransfer {
+  const list = {
+    length: files.length,
+    item: (i: number) => files[i] ?? null,
+  } as unknown as FileList
+  for (let i = 0; i < files.length; i++) {
+    ;(list as unknown as Record<number, File>)[i] = files[i]
+  }
+  return {
+    types: ['Files'],
+    files: list,
+    dropEffect: 'none',
+  } as unknown as DataTransfer
+}
+
+/**
+ * Fire a drag/drop event carrying a DataTransfer. jsdom's DragEvent drops the
+ * `dataTransfer` init, so we attach it to the native event by hand.
+ */
+function fireDragEvent(
+  kind: 'dragEnter' | 'drop',
+  node: Element,
+  dataTransfer: DataTransfer,
+) {
+  const event = createEvent[kind](node)
+  Object.defineProperty(event, 'dataTransfer', { value: dataTransfer })
+  fireEvent(node, event)
+}
 
 // jsdom has no ResizeObserver; the editor's size hook uses one. A no-op stub
 // leaves the measured size at 0 (the canvas then renders nothing), which is
@@ -121,20 +159,24 @@ describe('App boot + reset flow', () => {
     expect(screen.getByText('Maker')).toBeInTheDocument()
 
     // Collapsible section headers render inside the panel, in the new order.
-    expect(
-      screen.getByRole('button', { name: /Layout/ }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: /Colors/ }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: /Typography/ }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: /Calendar/ }),
-    ).toBeInTheDocument()
+    // All sections start collapsed, so the headers exist but their content is
+    // not yet in the accessibility tree.
+    const layoutHeader = screen.getByRole('button', { name: /Layout/ })
+    const colorsHeader = screen.getByRole('button', { name: /Colors/ })
+    const typographyHeader = screen.getByRole('button', { name: /Typography/ })
+    const calendarHeader = screen.getByRole('button', { name: /Calendar/ })
+    expect(layoutHeader).toBeInTheDocument()
+    expect(colorsHeader).toBeInTheDocument()
+    expect(typographyHeader).toBeInTheDocument()
+    expect(calendarHeader).toBeInTheDocument()
+    expect(layoutHeader).toHaveAttribute('aria-expanded', 'false')
+    expect(colorsHeader).toHaveAttribute('aria-expanded', 'false')
+    expect(typographyHeader).toHaveAttribute('aria-expanded', 'false')
+    expect(calendarHeader).toHaveAttribute('aria-expanded', 'false')
 
-    // The Calendar section carries its own language select.
+    // The Calendar section carries its own language select — expand it first.
+    fireEvent.click(calendarHeader)
+    expect(calendarHeader).toHaveAttribute('aria-expanded', 'true')
     expect(
       screen.getByRole('combobox', { name: 'Language' }),
     ).toBeInTheDocument()
@@ -159,6 +201,63 @@ describe('App boot + reset flow', () => {
     expect(cz).toHaveAttribute('aria-pressed', 'true')
     expect(en).toHaveAttribute('aria-pressed', 'false')
     expect(screen.getByLabelText('Název kalendáře')).toBeInTheDocument()
+  })
+
+  it('dropping an image file on the page preview sets the active page photo', async () => {
+    mockedLoadAll.mockResolvedValue({ config: null, images: [] })
+
+    // Report a real measured size so the cover canvas renders (it returns null
+    // at size 0), giving the drop target a child node to anchor + bubble from.
+    const originalRO = globalThis.ResizeObserver
+    class SizedResizeObserver {
+      private cb: ResizeObserverCallback
+      constructor(cb: ResizeObserverCallback) {
+        this.cb = cb
+      }
+      observe() {
+        this.cb(
+          [
+            { contentRect: { width: 600, height: 800 } },
+          ] as unknown as ResizeObserverEntry[],
+          this as unknown as ResizeObserver,
+        )
+      }
+      unobserve() {}
+      disconnect() {}
+    }
+    globalThis.ResizeObserver =
+      SizedResizeObserver as unknown as typeof ResizeObserver
+
+    try {
+      render(<App />)
+
+      // The stage column; the sheet wrapper (drop target) lives inside it. The
+      // drop bubbles up to its handler from any descendant — the cover title
+      // text rendered inside the canvas serves as the anchor.
+      const main = await screen.findByRole('main')
+      // `main` also contains the thumbnail rail; pick the title node that is in
+      // the stage canvas (inside the drop target), not a rail thumbnail.
+      const rail = within(main).getByRole('listbox', { name: 'Calendar pages' })
+      const anchor = within(main)
+        .getAllByText('My Calendar')
+        .find((el) => !rail.contains(el))
+      expect(anchor).toBeDefined()
+
+      // Dragging a file in shows the drop overlay.
+      fireDragEvent('dragEnter', anchor!, fileTransfer([]))
+      expect(screen.getByText('Drop photo here')).toBeInTheDocument()
+
+      // Dropping an image routes through the upload path (slot 0 = cover).
+      const file = new File(['x'], 'photo.png', { type: 'image/png' })
+      fireDragEvent('drop', anchor!, fileTransfer([file]))
+
+      await waitFor(() => expect(mockedPutImage).toHaveBeenCalledTimes(1))
+      expect(mockedPutImage).toHaveBeenCalledWith(0, file, expect.anything())
+      // Overlay clears after the drop.
+      expect(screen.queryByText('Drop photo here')).toBeNull()
+    } finally {
+      globalThis.ResizeObserver = originalRO
+    }
   })
 
   it('New/Reset confirms, resets the project, and clears storage', async () => {

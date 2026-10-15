@@ -41,7 +41,12 @@ import { ImageControls } from './features/controls/ImageControls'
 import { LayoutPicker } from './features/controls/LayoutPicker'
 import { CoverPageCanvas } from './features/editor/CoverPageCanvas'
 import { MonthPageCanvas } from './features/editor/MonthPageCanvas'
+import { useFileDrop } from './features/editor/useFileDrop'
 import { ExportButton } from './features/export/ExportButton'
+import {
+  DEFAULT_EXPORT_QUALITY,
+  type ExportQuality,
+} from './features/export/exportGeometry'
 import {
   clearAll,
   deleteImage,
@@ -101,6 +106,12 @@ function App() {
   // re-renders via the changed `fontFamily` prop (the family is already loaded),
   // so remounting would only cause flicker and interrupt an in-progress drag.
   const [fontEpoch, setFontEpoch] = useState(0)
+
+  // Export quality is a transient UI choice (not persisted with the project):
+  // it only affects the next PDF export's DPI + JPEG quality.
+  const [exportQuality, setExportQuality] = useState<ExportQuality>(
+    DEFAULT_EXPORT_QUALITY,
+  )
 
   const project = useProjectStore((s) => s.project)
   const activePageIndex = useProjectStore((s) => s.activePageIndex)
@@ -263,6 +274,10 @@ function App() {
     void putImage(activeSlot, file, DEFAULT_IMAGE_TRANSFORM)
   }
 
+  // Drag-and-drop an image file from the OS onto the page preview → set the
+  // active page's photo via the same upload path as the Upload button.
+  const { isDragging, dropHandlers } = useFileDrop(handleUpload)
+
   // Remove the active slot's photo and delete it from storage immediately. Cancel
   // any pending transform save so it can't resurrect a row after the delete.
   const handleRemove = () => {
@@ -327,6 +342,7 @@ function App() {
       id: 'layout',
       title: strings.sectionLayout,
       icon: <GridViewOutlinedIcon fontSize="small" />,
+      defaultOpen: false,
       content: (
         <LayoutPicker
           activeLayout={project.layout}
@@ -348,6 +364,7 @@ function App() {
       id: 'page-text',
       title: strings.sectionPageText,
       icon: <TitleOutlinedIcon fontSize="small" />,
+      defaultOpen: false,
       content: (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <Field label={strings.titleLabel} htmlFor="field-title">
@@ -371,6 +388,7 @@ function App() {
       id: 'colors',
       title: strings.sectionColors,
       icon: <PaletteOutlinedIcon fontSize="small" />,
+      defaultOpen: false,
       content: (
         <ColorControls
           textColor={project.style.textColor}
@@ -391,6 +409,7 @@ function App() {
       id: 'typography',
       title: strings.sectionTypography,
       icon: <TextFormatOutlinedIcon fontSize="small" />,
+      defaultOpen: false,
       content: (
         <FontControls
           fontFamily={project.style.fontFamily}
@@ -408,6 +427,7 @@ function App() {
       id: 'photo',
       title: strings.sectionPhoto,
       icon: <PhotoCameraOutlinedIcon fontSize="small" />,
+      defaultOpen: false,
       content: (
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
           <ImageControls
@@ -433,6 +453,7 @@ function App() {
       id: 'calendar',
       title: strings.sectionCalendar,
       icon: <CalendarMonthOutlinedIcon fontSize="small" />,
+      defaultOpen: false,
       content: (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <Field label={strings.startMonthLabel} htmlFor="field-start-month">
@@ -469,6 +490,17 @@ function App() {
             >
               <option value="en">{getStrings('en').languageName}</option>
               <option value="cs">{getStrings('cs').languageName}</option>
+            </SelectField>
+          </Field>
+          <Field label={strings.exportQualityLabel} htmlFor="field-export-quality">
+            <SelectField
+              id="field-export-quality"
+              value={exportQuality}
+              onChange={(v) => setExportQuality(v as ExportQuality)}
+            >
+              <option value="small">{strings.exportQualitySmall}</option>
+              <option value="balanced">{strings.exportQualityBalanced}</option>
+              <option value="max">{strings.exportQualityMax}</option>
             </SelectField>
           </Field>
           {/* Muted info hint: the fixed calendar conventions + export format. */}
@@ -642,6 +674,7 @@ function App() {
             <ExportButton
               project={project}
               images={images}
+              quality={exportQuality}
               labels={{
                 exportPdf: strings.exportPdf,
                 exportError: strings.exportError,
@@ -762,8 +795,44 @@ function App() {
               }}
             >
               {/* Floating sheet wrapper: shrink-wraps the canvas and carries the
-                  page drop shadow so the A4 sheet floats above the backdrop. */}
-              <Box sx={(theme) => ({ boxShadow: theme.tokens.shadow.page, lineHeight: 0 })}>
+                  page drop shadow so the A4 sheet floats above the backdrop.
+                  Also the drop target for dragging an image file in from the OS
+                  (positioned so the drop overlay can cover exactly this sheet). */}
+              <Box
+                {...dropHandlers}
+                sx={(theme) => ({
+                  position: 'relative',
+                  boxShadow: theme.tokens.shadow.page,
+                  lineHeight: 0,
+                })}
+              >
+                {/* Drop overlay: shown only while an image file is dragged over
+                    the sheet. Non-interactive so it never swallows the drop. */}
+                {isDragging && (
+                  <Box
+                    aria-hidden="true"
+                    sx={(theme) => ({
+                      position: 'absolute',
+                      inset: 0,
+                      zIndex: 2,
+                      pointerEvents: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '2px dashed',
+                      borderColor: 'primary.main',
+                      borderRadius: `${theme.tokens.radius.md}px`,
+                      backgroundColor: theme.tokens.accentTint,
+                    })}
+                  >
+                    <Typography
+                      variant="h6"
+                      sx={{ color: 'primary.main', fontWeight: 600 }}
+                    >
+                      {strings.dropPhotoHere}
+                    </Typography>
+                  </Box>
+                )}
                 {(() => {
                   switch (activePage.kind) {
                     case 'cover':

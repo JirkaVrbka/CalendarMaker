@@ -1,9 +1,15 @@
 /**
  * PDF export orchestration. Walks the 13 calendar pages in order, captures each
- * one as a high-resolution PNG (via the injectable page-capture), places it
+ * one as a high-resolution JPEG (via the injectable page-capture), places it
  * full-bleed on an A4 page of a single jsPDF document, reports progress, then
  * saves the file. Generation is strictly sequential and each offscreen render is
  * disposed by the capture before the next starts, so memory stays bounded.
+ *
+ * FILE SIZE: a calendar is 13 full-page photos, so encoding dominates the PDF
+ * size. We encode pages as JPEG (not lossless PNG) and build the document with
+ * jsPDF's `compress` on; the chosen quality preset (see `EXPORT_PRESETS`) picks
+ * the DPI and JPEG quality. This takes a 12-photo export from hundreds of MB of
+ * uncompressed PNG down to a sane, printable size.
  *
  * The run is READ-ONLY: it only reads the project and image map and never
  * touches the store, so it cannot trigger autosave.
@@ -37,8 +43,10 @@ export interface ExportOptions {
   readonly onProgress?: (progress: ExportProgress) => void
   /** Injectable page capture; defaults to the real offscreen renderer. */
   readonly capture?: CapturePageFn
-  /** Print resolution; defaults to 300 DPI. */
+  /** Print resolution; defaults to 300 DPI (usually driven by a quality preset). */
   readonly dpi?: number
+  /** JPEG quality (0..1) the pages are encoded at; defaults to 0.9. */
+  readonly jpegQuality?: number
 }
 
 /**
@@ -55,6 +63,7 @@ export async function exportCalendarPdf(
     onProgress,
     capture = captureCalendarPage,
     dpi = EXPORT_DPI,
+    jpegQuality = 0.9,
   } = options
 
   const size = computeExportPixelSize(dpi)
@@ -70,7 +79,12 @@ export async function exportCalendarPdf(
     }
   }
 
-  const pdf = new jsPDF({ format: 'a4', orientation: 'portrait', unit: 'mm' })
+  const pdf = new jsPDF({
+    format: 'a4',
+    orientation: 'portrait',
+    unit: 'mm',
+    compress: true,
+  })
   const total = project.pages.length
 
   for (let pageIndex = 0; pageIndex < total; pageIndex++) {
@@ -80,11 +94,13 @@ export async function exportCalendarPdf(
       entry: images[pageIndex],
       size,
       theme,
+      mimeType: 'image/jpeg',
+      quality: jpegQuality,
     })
     // jsPDF starts with one page already; add a new one before every page
     // after the first.
     if (pageIndex > 0) pdf.addPage()
-    pdf.addImage(dataUrl, 'PNG', 0, 0, widthMm, heightMm)
+    pdf.addImage(dataUrl, 'JPEG', 0, 0, widthMm, heightMm)
     onProgress?.({ current: pageIndex + 1, total })
   }
 
