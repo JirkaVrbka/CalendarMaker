@@ -50,7 +50,7 @@ export function BottomPhotoLayout(props: MonthLayoutProps) {
     width: regions.grid.width,
     height: regions.grid.height,
   }
-  const layout = computeMonthPageLayout(gridSize, matrix.length)
+  const layout = computeMonthPageLayout(gridSize, matrix.length, style.fontScale)
 
   const isDark = theme.palette.mode === 'dark'
   const paper = style.background

@@ -38,6 +38,10 @@ export interface MonthPageCanvasProps {
   readonly weekStart: WeekStart
   readonly language: Language
   readonly size: PixelSize
+  /** Editorial caption title drawn on the page (Classic Top). Optional. */
+  readonly title?: string
+  /** Editorial caption subtitle drawn on the page (Classic Top). Optional. */
+  readonly subtitle?: string
   /** Whole-calendar style (font + colors); falls back to theme when absent. */
   readonly style?: CalendarStyle
   /**
@@ -64,6 +68,8 @@ export function MonthPageCanvas({
   weekStart,
   language,
   size,
+  title,
+  subtitle,
   style,
   layout = DEFAULT_LAYOUT,
   imageUrl,
@@ -84,6 +90,7 @@ export function MonthPageCanvas({
     saturdayColor: theme.palette.primary.main,
     sundayColor: theme.palette.error.main,
     backgroundColor: theme.palette.background.paper,
+    fontScale: DEFAULT_STYLE.fontScale,
   })
 
   const content = getLayout(layout).render({
@@ -92,6 +99,8 @@ export function MonthPageCanvas({
     month,
     weekStart,
     language,
+    title,
+    subtitle,
     style: resolved,
     imageUrl,
     imageTransform,

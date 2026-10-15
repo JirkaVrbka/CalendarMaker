@@ -14,6 +14,7 @@ const LABELS = {
   replaceLabel: 'Replace photo',
   removeLabel: 'Remove photo',
   zoomLabel: 'Zoom',
+  dragHint: 'Drag the photo to reposition it',
 }
 
 function renderControls(
@@ -74,5 +75,12 @@ describe('ImageControls', () => {
     renderControls(makeEntry(), { onRemove })
     await userEvent.click(screen.getByRole('button', { name: 'Remove photo' }))
     expect(onRemove).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows the drag hint beneath the zoom slider', () => {
+    renderControls(undefined)
+    expect(
+      screen.getByText('Drag the photo to reposition it'),
+    ).toBeInTheDocument()
   })
 })

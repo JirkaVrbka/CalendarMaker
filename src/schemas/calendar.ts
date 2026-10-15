@@ -75,6 +75,16 @@ const calendarStyleObjectSchema = z
     saturdayColor: z.string().default(DEFAULT_STYLE.saturdayColor),
     sundayColor: z.string().default(DEFAULT_STYLE.sundayColor),
     backgroundColor: z.string().default(DEFAULT_STYLE.backgroundColor),
+    // Text-size multiplier (bounded). `.default` supplies 1 for a config saved
+    // before this field existed (migration-safe); `.catch` coerces an
+    // out-of-range / non-numeric stored value to the default rather than
+    // rejecting the whole record (the never-wipe-a-calendar data-safety bar).
+    fontScale: z
+      .number()
+      .min(0.6)
+      .max(2)
+      .default(DEFAULT_STYLE.fontScale)
+      .catch(DEFAULT_STYLE.fontScale),
   })
   .default(DEFAULT_STYLE)
 

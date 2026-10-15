@@ -11,6 +11,7 @@ const fallback: CalendarStyle = {
   saturdayColor: '#222222',
   sundayColor: '#444444',
   backgroundColor: '#333333',
+  fontScale: 1.5,
 }
 
 describe('resolveStyle', () => {
@@ -21,6 +22,7 @@ describe('resolveStyle', () => {
       saturdayColor: '#bbbbbb',
       sundayColor: '#dddddd',
       backgroundColor: '#cccccc',
+      fontScale: 1.2,
     }
     expect(resolveStyle(style, fallback)).toEqual({
       fontFamily: 'Inter',
@@ -28,6 +30,7 @@ describe('resolveStyle', () => {
       text: '#aaaaaa',
       saturday: '#bbbbbb',
       sunday: '#dddddd',
+      fontScale: 1.2,
     })
   })
 
@@ -38,6 +41,7 @@ describe('resolveStyle', () => {
       text: '#aaaaaa',
       saturday: '#222222',
       sunday: '#444444',
+      fontScale: 1.5,
     })
   })
 
@@ -53,6 +57,7 @@ describe('resolveStyle', () => {
       text: '#111111',
       saturday: '#222222',
       sunday: '#444444',
+      fontScale: 1.5,
     })
   })
 
@@ -63,6 +68,7 @@ describe('resolveStyle', () => {
       text: '#111111',
       saturday: '#0000ff',
       sunday: '#444444',
+      fontScale: 1.5,
     })
   })
 
@@ -73,7 +79,17 @@ describe('resolveStyle', () => {
       text: '#111111',
       saturday: '#222222',
       sunday: '#444444',
+      fontScale: 1.5,
     })
+  })
+
+  it('uses an explicit fontScale verbatim and falls back when unset/invalid', () => {
+    expect(resolveStyle({ fontScale: 0.8 }, fallback).fontScale).toBe(0.8)
+    // Missing → fallback; a non-positive / non-finite scale also falls back so
+    // text is never collapsed to size 0.
+    expect(resolveStyle({ textColor: '#aaaaaa' }, fallback).fontScale).toBe(1.5)
+    expect(resolveStyle({ fontScale: 0 }, fallback).fontScale).toBe(1.5)
+    expect(resolveStyle({ fontScale: Number.NaN }, fallback).fontScale).toBe(1.5)
   })
 
   it('an explicit value wins over the fallback (the exported-PDF guarantee)', () => {

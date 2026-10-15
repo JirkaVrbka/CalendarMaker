@@ -79,13 +79,86 @@ describe('App boot + reset flow', () => {
     // Loading: spinner + text, editor not yet present.
     expect(screen.getByRole('progressbar')).toBeInTheDocument()
     expect(screen.getByText('Loading…')).toBeInTheDocument()
-    expect(screen.queryByText('New / Reset')).toBeNull()
+    expect(
+      screen.queryByRole('button', { name: 'New / Reset' }),
+    ).toBeNull()
 
     // Resolve the load → store hydrates → editor replaces the loader.
     resolveLoad({ config: null, images: [] })
 
-    expect(await screen.findByText('New / Reset')).toBeInTheDocument()
+    expect(
+      await screen.findByRole('button', { name: 'New / Reset' }),
+    ).toBeInTheDocument()
     expect(screen.queryByRole('progressbar')).toBeNull()
+  })
+
+  it('renders the three columns: rail, stage, and right controls panel', async () => {
+    mockedLoadAll.mockResolvedValue({ config: null, images: [] })
+
+    render(<App />)
+
+    // Right controls panel region (the moved controls now live here).
+    const panel = await screen.findByRole('region', { name: 'Controls' })
+    expect(panel).toBeInTheDocument()
+
+    // The sticky panel head shows the per-page editing note (cover = page 1/13).
+    expect(
+      screen.getByText(
+        'Editing page 1 of 13 — changes apply to this page',
+      ),
+    ).toBeInTheDocument()
+
+    // Left thumbnail rail (PageNavigator listbox) and the center stage (main).
+    expect(
+      screen.getByRole('listbox', { name: 'Calendar pages' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('main')).toBeInTheDocument()
+
+    // Rail header renders above the thumbnails.
+    expect(screen.getByText('Pages')).toBeInTheDocument()
+
+    // Brand wordmark renders in the header.
+    expect(screen.getByText('Maker')).toBeInTheDocument()
+
+    // Collapsible section headers render inside the panel, in the new order.
+    expect(
+      screen.getByRole('button', { name: /Layout/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /Colors/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /Typography/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /Calendar/ }),
+    ).toBeInTheDocument()
+
+    // The Calendar section carries its own language select.
+    expect(
+      screen.getByRole('combobox', { name: 'Language' }),
+    ).toBeInTheDocument()
+  })
+
+  it('language toggle: EN/CZ segmented buttons switch the UI language', async () => {
+    mockedLoadAll.mockResolvedValue({ config: null, images: [] })
+
+    render(<App />)
+
+    const en = await screen.findByRole('button', { name: 'EN' })
+    const cz = screen.getByRole('button', { name: 'CZ' })
+
+    // Starts in English: EN pressed, CZ not; English field label present.
+    expect(en).toHaveAttribute('aria-pressed', 'true')
+    expect(cz).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByLabelText('Calendar title')).toBeInTheDocument()
+
+    // Click CZ → language switches to Czech.
+    fireEvent.click(cz)
+
+    expect(cz).toHaveAttribute('aria-pressed', 'true')
+    expect(en).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByLabelText('Název kalendáře')).toBeInTheDocument()
   })
 
   it('New/Reset confirms, resets the project, and clears storage', async () => {
@@ -102,7 +175,7 @@ describe('App boot + reset flow', () => {
     fireEvent.change(titleField, { target: { value: 'Changed Title' } })
     expect(titleField.value).toBe('Changed Title')
 
-    fireEvent.click(screen.getByText('New / Reset'))
+    fireEvent.click(screen.getByRole('button', { name: 'New / Reset' }))
 
     // Confirm was consulted and storage was wiped.
     expect(window.confirm).toHaveBeenCalledTimes(1)

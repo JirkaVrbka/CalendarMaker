@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest'
 
 import {
   cellRect,
+  classicCellRect,
+  classicHeaderCellRect,
+  computeClassicMonthLayout,
   computeMonthPageLayout,
   GRID_COLUMNS,
   headerCellRect,
@@ -11,6 +14,12 @@ import {
 } from './monthPageLayout'
 
 const A4_PX = { width: 210, height: 297 }
+
+/** The Classic Top body region is the sub-rect below the photo (~45% tall). */
+const BODY_PX = {
+  width: 210,
+  height: 297 * (1 - PHOTO_REGION_FRACTION),
+}
 
 describe('splitMonthPage', () => {
   it('puts the photo region on top (~55%) and the grid below (~45%), full width', () => {
@@ -111,5 +120,133 @@ describe('computeMonthPageLayout', () => {
       layout.grid.x + layout.grid.width,
       5,
     )
+  })
+})
+
+describe('computeClassicMonthLayout', () => {
+  it('stacks caption, month-head, header, grid then footer without overlap', () => {
+    const l = computeClassicMonthLayout(BODY_PX, 6)
+    // The five bands run top-to-bottom in order and never overlap.
+    expect(l.caption.y + l.caption.height).toBeLessThanOrEqual(l.monthHead.y + 1e-9)
+    expect(l.monthHead.y + l.monthHead.height).toBeLessThanOrEqual(l.header.y + 1e-9)
+    expect(l.header.y + l.header.height).toBeLessThanOrEqual(l.grid.y + 1e-9)
+    expect(l.grid.y + l.grid.height).toBeLessThanOrEqual(l.footer.y + 1e-9)
+  })
+
+  it('gives every band a positive size and a positive font size', () => {
+    const l = computeClassicMonthLayout(BODY_PX, 6)
+    for (const band of [l.caption, l.monthHead, l.header, l.grid, l.footer]) {
+      expect(band.width).toBeGreaterThan(0)
+      expect(band.height).toBeGreaterThan(0)
+    }
+    expect(l.caption.titleFontSize).toBeGreaterThan(0)
+    expect(l.caption.subtitleFontSize).toBeGreaterThan(0)
+    expect(l.monthHead.nameFontSize).toBeGreaterThan(0)
+    expect(l.monthHead.yearFontSize).toBeGreaterThan(0)
+    expect(l.header.fontSize).toBeGreaterThan(0)
+    expect(l.footer.fontSize).toBeGreaterThan(0)
+    expect(l.dayFontSize).toBeGreaterThan(0)
+  })
+
+  it('keeps the grid in the middle: a 7-column, N-row grid of equal cells', () => {
+    const l = computeClassicMonthLayout(BODY_PX, 5)
+    expect(l.grid.rows).toBe(5)
+    expect(l.grid.columnWidth).toBeCloseTo(l.grid.width / GRID_COLUMNS, 5)
+    expect(l.header.columnWidth).toBeCloseTo(l.grid.columnWidth, 5)
+    // The grid sits below the header and above the footer (the reserved bands).
+    expect(l.grid.y).toBeGreaterThan(l.header.y)
+    expect(l.grid.y + l.grid.height).toBeLessThan(l.footer.y + 1e-9)
+  })
+
+  it('clamps a non-positive week count to at least one row', () => {
+    expect(computeClassicMonthLayout(BODY_PX, 0).grid.rows).toBe(1)
+  })
+
+  it('keeps every band and grid cell inside the body region', () => {
+    const l = computeClassicMonthLayout(BODY_PX, 6)
+    const first = classicCellRect(l, 0, 0)
+    const last = classicCellRect(l, l.grid.rows - 1, GRID_COLUMNS - 1)
+    const h0 = classicHeaderCellRect(l, 0)
+    const h6 = classicHeaderCellRect(l, 6)
+    expect(first.x).toBeGreaterThanOrEqual(0)
+    expect(l.caption.y).toBeGreaterThanOrEqual(0)
+    expect(last.x + last.width).toBeLessThanOrEqual(BODY_PX.width + 0.001)
+    expect(last.y + last.height).toBeLessThanOrEqual(BODY_PX.height + 0.001)
+    expect(h0.x).toBeCloseTo(l.grid.x, 5)
+    expect(h6.x + h6.width).toBeCloseTo(l.grid.x + l.grid.width, 5)
+  })
+})
+
+/**
+ * The `fontScale` multiplier scales every derived font size while leaving the
+ * band geometry fixed, so text grows/shrinks but the bands never start to
+ * overlap. Each size is clamped to its band so a large scale cannot overflow.
+ */
+describe('computeClassicMonthLayout fontScale', () => {
+  it('defaults to scale 1 when fontScale is omitted', () => {
+    expect(computeClassicMonthLayout(BODY_PX, 6)).toEqual(
+      computeClassicMonthLayout(BODY_PX, 6, 1),
+    )
+  })
+
+  it('makes every derived font size larger for a bigger scale, smaller for a smaller one', () => {
+    const base = computeClassicMonthLayout(BODY_PX, 6, 1)
+    const big = computeClassicMonthLayout(BODY_PX, 6, 1.3)
+    const small = computeClassicMonthLayout(BODY_PX, 6, 0.75)
+    expect(big.caption.titleFontSize).toBeGreaterThan(base.caption.titleFontSize)
+    expect(big.caption.subtitleFontSize).toBeGreaterThan(
+      base.caption.subtitleFontSize,
+    )
+    expect(big.monthHead.nameFontSize).toBeGreaterThan(
+      base.monthHead.nameFontSize,
+    )
+    expect(big.header.fontSize).toBeGreaterThan(base.header.fontSize)
+    expect(big.footer.fontSize).toBeGreaterThan(base.footer.fontSize)
+    expect(big.dayFontSize).toBeGreaterThan(base.dayFontSize)
+
+    expect(small.caption.titleFontSize).toBeLessThan(base.caption.titleFontSize)
+    expect(small.monthHead.nameFontSize).toBeLessThan(
+      base.monthHead.nameFontSize,
+    )
+    expect(small.header.fontSize).toBeLessThan(base.header.fontSize)
+    expect(small.dayFontSize).toBeLessThan(base.dayFontSize)
+  })
+
+  it('keeps the bands non-overlapping and the fonts inside their bands at the max scale', () => {
+    const l = computeClassicMonthLayout(BODY_PX, 6, 2)
+    expect(l.caption.y + l.caption.height).toBeLessThanOrEqual(l.monthHead.y + 1e-9)
+    expect(l.monthHead.y + l.monthHead.height).toBeLessThanOrEqual(l.header.y + 1e-9)
+    expect(l.header.y + l.header.height).toBeLessThanOrEqual(l.grid.y + 1e-9)
+    expect(l.grid.y + l.grid.height).toBeLessThanOrEqual(l.footer.y + 1e-9)
+    // Clamped fonts still fit within their own band's height.
+    expect(l.caption.titleFontSize).toBeLessThanOrEqual(l.caption.height)
+    expect(l.monthHead.nameFontSize).toBeLessThanOrEqual(l.monthHead.height)
+    expect(l.header.fontSize).toBeLessThanOrEqual(l.header.height)
+    expect(l.footer.fontSize).toBeLessThanOrEqual(l.footer.height)
+  })
+})
+
+describe('computeMonthPageLayout fontScale', () => {
+  it('defaults to scale 1 when fontScale is omitted', () => {
+    expect(computeMonthPageLayout(A4_PX, 6)).toEqual(
+      computeMonthPageLayout(A4_PX, 6, 1),
+    )
+  })
+
+  it('makes the title, day and header font sizes larger/smaller with the scale', () => {
+    const base = computeMonthPageLayout(A4_PX, 6, 1)
+    const big = computeMonthPageLayout(A4_PX, 6, 1.3)
+    const small = computeMonthPageLayout(A4_PX, 6, 0.75)
+    expect(big.title.fontSize).toBeGreaterThan(base.title.fontSize)
+    expect(big.dayFontSize).toBeGreaterThan(base.dayFontSize)
+    expect(big.headerFontSize).toBeGreaterThan(base.headerFontSize)
+    expect(small.title.fontSize).toBeLessThan(base.title.fontSize)
+    expect(small.dayFontSize).toBeLessThan(base.dayFontSize)
+    expect(small.headerFontSize).toBeLessThan(base.headerFontSize)
+  })
+
+  it('clamps the title at the max scale so it stays within its band', () => {
+    const huge = computeMonthPageLayout(A4_PX, 6, 2)
+    expect(huge.title.fontSize).toBeLessThanOrEqual(huge.title.height)
   })
 })

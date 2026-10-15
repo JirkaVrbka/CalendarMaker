@@ -28,7 +28,11 @@ vi.mock('react-konva', async () => {
   }
 })
 
-function renderNavigator(activeIndex = 0, onSelect = vi.fn()) {
+function renderNavigator(
+  activeIndex = 0,
+  onSelect = vi.fn(),
+  railTitle?: string,
+) {
   render(
     <ThemeProvider theme={createAppTheme('light')}>
       <PageNavigator
@@ -40,6 +44,7 @@ function renderNavigator(activeIndex = 0, onSelect = vi.fn()) {
         title="My Calendar"
         coverLabel="Cover"
         navigatorLabel="Calendar pages"
+        railTitle={railTitle}
       />
     </ThemeProvider>,
   )
@@ -86,5 +91,19 @@ describe('PageNavigator', () => {
     renderNavigator()
     const listbox = screen.getByRole('listbox', { name: 'Calendar pages' })
     expect(within(listbox).getAllByRole('option')).toHaveLength(13)
+  })
+
+  it('renders the rail header with title and page count when railTitle is set', () => {
+    renderNavigator(0, vi.fn(), 'Pages')
+    expect(screen.getByText('Pages')).toBeInTheDocument()
+    expect(screen.getByTestId('page-navigator-count')).toHaveTextContent('13')
+  })
+
+  it('shows a dash index badge on the cover and a number on month pages', () => {
+    renderNavigator()
+    const coverOption = screen.getByRole('option', { name: 'Cover' })
+    expect(within(coverOption).getByTestId('page-navigator-index')).toHaveTextContent('—')
+    const januaryOption = screen.getByRole('option', { name: 'January 2026' })
+    expect(within(januaryOption).getByTestId('page-navigator-index')).toHaveTextContent('1')
   })
 })

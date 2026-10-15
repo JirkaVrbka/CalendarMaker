@@ -25,6 +25,14 @@ export interface MonthLayoutProps {
   readonly month: number
   readonly weekStart: WeekStart
   readonly language: Language
+  /**
+   * Editorial caption title drawn on the page (the project's cover title).
+   * Optional — layouts that have no caption band (and empty values) ignore it;
+   * Classic Top renders it only when non-empty.
+   */
+  readonly title?: string
+  /** Editorial caption subtitle; same optional/ignored rules as `title`. */
+  readonly subtitle?: string
   /** Fully-resolved style (font + colors) the dispatcher derived once. */
   readonly style: ResolvedStyle
   /** Object-URL of the month photo, if one has been uploaded. */

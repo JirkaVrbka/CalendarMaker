@@ -6,7 +6,7 @@
  */
 import { useMemo, useState } from 'react'
 
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
+import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -68,18 +68,35 @@ export function ExportButton({ project, images, labels }: ExportButtonProps) {
         {/* span wrapper so the tooltip still works while the button is disabled */}
         <span>
           <Button
-            color="inherit"
+            variant="contained"
+            color="primary"
             size="small"
             startIcon={
               busy ? (
                 <CircularProgress size={16} color="inherit" />
               ) : (
-                <PictureAsPdfIcon />
+                <FileDownloadOutlinedIcon />
               )
             }
             onClick={handleExport}
             disabled={busy}
             aria-busy={busy}
+            sx={(theme) => ({
+              // Vertical accent gradient (accent300 → accent → accent700) with
+              // an inner top highlight, matching the mockup's .btn-export. White
+              // text stays readable over the dark-blue accent in both themes.
+              backgroundImage: `linear-gradient(180deg, ${theme.tokens.accent300} -40%, ${theme.palette.primary.main} 45%, ${theme.tokens.accent700})`,
+              border: '1px solid',
+              borderColor: theme.tokens.accent700,
+              color: '#fff',
+              boxShadow: `${theme.tokens.shadow.sm}, inset 0 1px 0 rgba(255,255,255,0.18)`,
+              '&:hover': { filter: 'brightness(1.06)' },
+              // Keep the disabled (busy) state visually distinct and readable.
+              '&.Mui-disabled': {
+                backgroundImage: 'none',
+                color: theme.palette.action.disabled,
+              },
+            })}
           >
             {label}
           </Button>

@@ -1,8 +1,11 @@
 /**
- * The curated font set for the calendar. Deliberately small (5) with variety —
- * a rounded sans, a neutral sans, a serif, an elegant display serif, and a
- * handwritten display — so the picker is a quick, opinionated choice rather than
- * an open font browser (no arbitrary upload this slice).
+ * The curated font set for the calendar. Deliberately small (7) with variety —
+ * a rounded sans, a neutral sans, a serif, an elegant display serif, a
+ * handwritten display, plus Fraunces and Hanken Grotesk — so the picker is a
+ * quick, opinionated choice rather than an open font browser (no arbitrary
+ * upload this slice). Fraunces and Hanken Grotesk pull double duty: they are the
+ * app's UI-chrome fonts (see `DISPLAY_FONT`/`UI_FONT` below, consumed by the
+ * theme) AND are offered here as two selectable calendar fonts.
  *
  * These families MUST stay in sync with the Google-Fonts `<link>` in
  * `index.html`: the link loads the CSS @font-faces; `loadCalendarFonts` then
@@ -22,7 +25,15 @@ export const FONT_OPTIONS: readonly FontOption[] = [
   { label: 'Merriweather', cssFamily: 'Merriweather' }, // serif
   { label: 'Playfair Display', cssFamily: 'Playfair Display' }, // elegant display serif
   { label: 'Pacifico', cssFamily: 'Pacifico' }, // handwritten display
+  { label: 'Fraunces', cssFamily: 'Fraunces' }, // display serif (professional restyle)
+  { label: 'Hanken Grotesk', cssFamily: 'Hanken Grotesk' }, // neutral sans (professional restyle)
 ]
+
+/** UI chrome font for the professional restyle (app shell, controls, not calendar text). */
+export const UI_FONT = 'Hanken Grotesk'
+
+/** Display/heading font for the professional restyle (titles, not calendar text). */
+export const DISPLAY_FONT = 'Fraunces'
 
 /**
  * Force the curated font files to download and resolve once they are ready

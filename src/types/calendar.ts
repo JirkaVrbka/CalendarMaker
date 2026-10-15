@@ -97,6 +97,13 @@ export interface CalendarStyle {
   readonly sundayColor: string
   /** Page/paper background fill. */
   readonly backgroundColor: string
+  /**
+   * Multiplier scaling ALL calendar text sizes (title, month name, weekday
+   * headers, day numbers). 1 = the established baseline size; smaller shrinks,
+   * larger enlarges. Rendering clamps each scaled size to its band so a large
+   * scale never overflows the layout.
+   */
+  readonly fontScale: number
 }
 
 /**
@@ -112,6 +119,7 @@ export const DEFAULT_STYLE: CalendarStyle = {
   saturdayColor: '#4c6ef5',
   sundayColor: '#e03131',
   backgroundColor: '#ffffff',
+  fontScale: 1,
 }
 
 /**

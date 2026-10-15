@@ -5,11 +5,13 @@
  * slot. The zoom slider scales the photo (1 = cover-fit, up to `MAX_ZOOM`).
  */
 import DeleteOutlineIcon from '@mui/icons-material/Delete'
+import OpenWithIcon from '@mui/icons-material/OpenWith'
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera'
 import ZoomInIcon from '@mui/icons-material/ZoomIn'
 import Button from '@mui/material/Button'
 import Slider from '@mui/material/Slider'
 import Stack from '@mui/material/Stack'
+import Typography from '@mui/material/Typography'
 
 import { DEFAULT_IMAGE_TRANSFORM } from '../../types/calendar'
 import type { ImageEntry } from '../../types/calendar'
@@ -30,6 +32,8 @@ export interface ImageControlsProps {
   readonly replaceLabel: string
   readonly removeLabel: string
   readonly zoomLabel: string
+  /** Caption shown beneath the zoom slider telling the user they can drag the photo on the canvas. */
+  readonly dragHint: string
 }
 
 export function ImageControls({
@@ -41,6 +45,7 @@ export function ImageControls({
   replaceLabel,
   removeLabel,
   zoomLabel,
+  dragHint,
 }: ImageControlsProps) {
   const hasImage = Boolean(entry)
   const scale = entry?.transform.scale ?? DEFAULT_IMAGE_TRANSFORM.scale
@@ -53,33 +58,35 @@ export function ImageControls({
   }
 
   return (
-    <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-      <Button
-        component="label"
-        variant="outlined"
-        size="small"
-        startIcon={<PhotoCameraIcon />}
-      >
-        {hasImage ? replaceLabel : uploadLabel}
-        <input
-          type="file"
-          accept="image/*"
-          hidden
-          aria-label={hasImage ? replaceLabel : uploadLabel}
-          onChange={handleFileChange}
-        />
-      </Button>
+    <Stack spacing={1.5}>
+      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+        <Button
+          component="label"
+          variant="outlined"
+          size="small"
+          startIcon={<PhotoCameraIcon />}
+        >
+          {hasImage ? replaceLabel : uploadLabel}
+          <input
+            type="file"
+            accept="image/*"
+            hidden
+            aria-label={hasImage ? replaceLabel : uploadLabel}
+            onChange={handleFileChange}
+          />
+        </Button>
 
-      <Button
-        variant="text"
-        size="small"
-        color="inherit"
-        startIcon={<DeleteOutlineIcon />}
-        disabled={!hasImage}
-        onClick={onRemove}
-      >
-        {removeLabel}
-      </Button>
+        <Button
+          variant="text"
+          size="small"
+          color="inherit"
+          startIcon={<DeleteOutlineIcon />}
+          disabled={!hasImage}
+          onClick={onRemove}
+        >
+          {removeLabel}
+        </Button>
+      </Stack>
 
       <Stack
         direction="row"
@@ -95,8 +102,21 @@ export function ImageControls({
           step={0.01}
           disabled={!hasImage}
           onChange={(_, value) => onZoom(value as number)}
+          color="primary"
           sx={{ flexGrow: 1 }}
         />
+      </Stack>
+
+      {/* Tells the user the photo itself can be dragged on the canvas to reposition. */}
+      <Stack
+        direction="row"
+        spacing={0.75}
+        sx={{ alignItems: 'center', color: 'text.secondary' }}
+      >
+        <OpenWithIcon fontSize="small" aria-hidden="true" />
+        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+          {dragHint}
+        </Typography>
       </Stack>
     </Stack>
   )

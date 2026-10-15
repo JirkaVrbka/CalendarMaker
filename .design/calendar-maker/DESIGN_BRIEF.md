@@ -31,9 +31,11 @@ their device (IndexedDB) — no account, no upload to a server.
 
 Greenfield project; the vocabulary below is the starting point to extend.
 
-- Typography: Friendly rounded sans (e.g. Nunito) for UI; neutral and legible.
-- Colors: Light neutral chrome by default with a **light + dark toggle** (MUI theming). Chrome colors kept
-  neutral so the calendar's own colors read true.
+- Typography: Fraunces (display/titles) + Hanken Grotesk (UI body text) — a professional editorial pairing;
+  neutral and legible.
+- Colors: Graphite/neutral chrome (paper, surface, ink tones) by default with a **light + dark toggle** (MUI
+  theming), a deep ink-blue accent for actions/selection, and a terracotta accent reserved for weekend
+  highlights. Chrome colors kept neutral so the calendar's own colors read true.
 - Spacing: MUI 8px spacing scale.
 - Components: Material UI (MUI) as the component kit (ColorPicker-style controls, Slider, inputs, Tabs, panels).
 

@@ -36,6 +36,10 @@ export interface LayoutPickerProps {
   readonly year: number
   readonly month: number
   readonly weekStart: WeekStart
+  /** Editorial caption title drawn on each preview (Classic Top). */
+  readonly title?: string
+  /** Editorial caption subtitle drawn on each preview (Classic Top). */
+  readonly subtitle?: string
   readonly style?: CalendarStyle
   readonly imageUrl?: string
   readonly imageTransform?: ImageTransform
@@ -65,6 +69,8 @@ const LayoutOption = memo(function LayoutOption({
   year,
   month,
   weekStart,
+  title,
+  subtitle,
   style,
   imageUrl,
   imageTransform,
@@ -111,6 +117,8 @@ const LayoutOption = memo(function LayoutOption({
           weekStart={weekStart}
           language={language}
           size={size}
+          title={title}
+          subtitle={subtitle}
           style={style}
           layout={layout.id}
           imageUrl={imageUrl}
@@ -132,6 +140,8 @@ export function LayoutPicker({
   year,
   month,
   weekStart,
+  title,
+  subtitle,
   style,
   imageUrl,
   imageTransform,
@@ -157,6 +167,8 @@ export function LayoutPicker({
             year={year}
             month={month}
             weekStart={weekStart}
+            title={title}
+            subtitle={subtitle}
             style={style}
             imageUrl={imageUrl}
             imageTransform={imageTransform}

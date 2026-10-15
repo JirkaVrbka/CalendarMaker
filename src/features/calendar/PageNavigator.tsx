@@ -102,6 +102,8 @@ const Thumbnail = memo(function Thumbnail({
                 weekStart={weekStart}
                 language={language}
                 size={size}
+                title={title}
+                subtitle={subtitle}
                 style={style}
                 layout={layout}
                 imageUrl={imageUrl}
@@ -140,6 +142,11 @@ export interface PageNavigatorProps {
   readonly coverLabel: string
   /** Accessible name for the whole rail. */
   readonly navigatorLabel: string
+  /**
+   * Optional rail header text (e.g. "Pages"), rendered above the listbox with
+   * the page count in a small pill. Omit to render the rail with no header.
+   */
+  readonly railTitle?: string
 }
 
 export function PageNavigator({
@@ -157,6 +164,7 @@ export function PageNavigator({
   images,
   coverLabel,
   navigatorLabel,
+  railTitle,
 }: PageNavigatorProps) {
   const optionRefs = useRef<Array<HTMLDivElement | null>>([])
   const thumb = fitPageSize(A4_PORTRAIT, THUMB_BOX)
@@ -204,73 +212,141 @@ export function PageNavigator({
   }
 
   return (
-    <Box
-      role="listbox"
-      aria-label={navigatorLabel}
-      aria-orientation="vertical"
-      onKeyDown={handleKeyDown}
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 1,
-        p: 1,
-        overflowY: 'auto',
-        height: '100%',
-      }}
-    >
-      {pages.map((page, index) => {
-        const selected = index === activeIndex
-        const label = optionLabel(page)
-        return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      {railTitle !== undefined && (
+        <Box
+          sx={(theme) => ({
+            display: 'flex',
+            alignItems: 'baseline',
+            justifyContent: 'space-between',
+            px: 2,
+            py: 1.25,
+            borderBottom: '1px solid',
+            borderColor: theme.tokens.hairline2,
+          })}
+        >
           <Box
-            key={page.kind === 'cover' ? 'cover' : `${page.year}-${page.month}`}
-            ref={(el: HTMLDivElement | null) => {
-              optionRefs.current[index] = el
-            }}
-            role="option"
-            aria-selected={selected}
-            aria-label={label}
-            tabIndex={selected ? 0 : -1}
-            onClick={() => {
-              onSelect(index)
-              // Keep DOM focus in sync with selection after a mouse click.
-              optionRefs.current[index]?.focus()
-            }}
+            component="span"
             sx={{
-              cursor: 'pointer',
-              borderRadius: 1,
-              p: 0.5,
-              border: '2px solid',
-              borderColor: selected ? 'primary.main' : 'transparent',
-              boxShadow: selected ? 3 : 0,
-              transition: 'border-color 120ms, box-shadow 120ms',
-              '&:hover': {
-                borderColor: selected ? 'primary.main' : 'divider',
-              },
-              '&:focus-visible': {
-                outline: '2px solid',
-                outlineColor: 'primary.main',
-                outlineOffset: 2,
-              },
+              fontSize: '10.5px',
+              fontWeight: 700,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              color: 'text.secondary',
             }}
           >
-            <Thumbnail
-              page={page}
-              size={thumb}
-              weekStart={weekStart}
-              language={language}
-              title={title}
-              subtitle={subtitle}
-              titlePosition={titlePosition}
-              subtitlePosition={subtitlePosition}
-              layout={layout}
-              style={style}
-              imageUrl={images?.[index]?.url}
-              imageTransform={images?.[index]?.transform}
-            />
+            {railTitle}
           </Box>
-        )
-      })}
+          <Box
+            component="span"
+            data-testid="page-navigator-count"
+            sx={(theme) => ({
+              fontSize: 11,
+              fontWeight: 600,
+              lineHeight: 1,
+              color: 'text.secondary',
+              backgroundColor: theme.tokens.accentTint,
+              borderRadius: `${theme.tokens.radius.sm}px`,
+              px: 0.75,
+              py: 0.375,
+              fontVariantNumeric: 'tabular-nums',
+            })}
+          >
+            {pages.length}
+          </Box>
+        </Box>
+      )}
+      <Box
+        role="listbox"
+        aria-label={navigatorLabel}
+        aria-orientation="vertical"
+        onKeyDown={handleKeyDown}
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1,
+          p: 1,
+          overflowY: 'auto',
+          flex: 1,
+          minHeight: 0,
+        }}
+      >
+        {pages.map((page, index) => {
+          const selected = index === activeIndex
+          const label = optionLabel(page)
+          return (
+            <Box
+              key={page.kind === 'cover' ? 'cover' : `${page.year}-${page.month}`}
+              ref={(el: HTMLDivElement | null) => {
+                optionRefs.current[index] = el
+              }}
+              role="option"
+              aria-selected={selected}
+              aria-label={label}
+              tabIndex={selected ? 0 : -1}
+              onClick={() => {
+                onSelect(index)
+                // Keep DOM focus in sync with selection after a mouse click.
+                optionRefs.current[index]?.focus()
+              }}
+              sx={(theme) => ({
+                cursor: 'pointer',
+                borderRadius: 1,
+                p: 0.5,
+                border: '2px solid',
+                borderColor: selected ? 'primary.main' : 'transparent',
+                boxShadow: selected ? theme.tokens.shadow.sm : 'none',
+                backgroundColor: selected ? theme.tokens.accentTint : 'transparent',
+                transition: 'border-color 120ms, box-shadow 120ms, background-color 120ms',
+                '&:hover': {
+                  borderColor: selected ? 'primary.main' : 'divider',
+                },
+                '&:focus-visible': {
+                  outline: '2px solid',
+                  outlineColor: 'primary.main',
+                  outlineOffset: 2,
+                },
+              })}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                {/* Purely visual page index ("—" for the cover, 1..12 for months);
+                    the option's aria-label already carries the accessible name. */}
+                <Box
+                  aria-hidden="true"
+                  component="span"
+                  data-testid="page-navigator-index"
+                  sx={{
+                    flexShrink: 0,
+                    width: 16,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    lineHeight: 1,
+                    textAlign: 'right',
+                    fontVariantNumeric: 'tabular-nums',
+                    color: selected ? 'primary.main' : 'text.secondary',
+                  }}
+                >
+                  {index === 0 ? '—' : index}
+                </Box>
+                <Thumbnail
+                  page={page}
+                  size={thumb}
+                  weekStart={weekStart}
+                  language={language}
+                  title={title}
+                  subtitle={subtitle}
+                  titlePosition={titlePosition}
+                  subtitlePosition={subtitlePosition}
+                  layout={layout}
+                  style={style}
+                  imageUrl={images?.[index]?.url}
+                  imageTransform={images?.[index]?.transform}
+                />
+              </Box>
+            </Box>
+          )
+        })}
+      </Box>
     </Box>
   )
 }
