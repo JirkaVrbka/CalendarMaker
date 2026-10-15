@@ -34,6 +34,7 @@ describe('calendarStyleSchema migration', () => {
       saturdayColor: '#abcdef',
       sundayColor: '#abcdef',
       backgroundColor: '#ffffff',
+      fontScale: DEFAULT_STYLE.fontScale,
     })
     // The legacy key is dropped, not carried through.
     expect('weekendColor' in (parsed as unknown as Record<string, unknown>)).toBe(false)
@@ -58,6 +59,7 @@ describe('calendarStyleSchema migration', () => {
       saturdayColor: '#111111',
       sundayColor: '#222222',
       backgroundColor: '#ffffff',
+      fontScale: 1.25,
     }
     expect(calendarStyleSchema.parse(style)).toEqual(style)
   })
@@ -77,6 +79,39 @@ describe('calendarStyleSchema migration', () => {
   it('fills only the missing per-day color, keeping the provided ones', () => {
     const parsed = calendarStyleSchema.parse({ saturdayColor: '#123456' })
     expect(parsed).toEqual({ ...DEFAULT_STYLE, saturdayColor: '#123456' })
+  })
+
+  it('defaults fontScale to 1 when the field is absent (migration-safe)', () => {
+    // A style saved before the font-size feature carries no `fontScale`; the
+    // default must supply 1 so the saved calendar renders at its baseline size.
+    const parsed = calendarStyleSchema.parse({
+      fontFamily: 'Nunito',
+      textColor: '#1f2933',
+      saturdayColor: '#4c6ef5',
+      sundayColor: '#e03131',
+      backgroundColor: '#ffffff',
+    })
+    expect(parsed.fontScale).toBe(1)
+  })
+
+  it('keeps a provided in-range fontScale verbatim', () => {
+    expect(calendarStyleSchema.parse({ fontScale: 1.5 }).fontScale).toBe(1.5)
+    expect(calendarStyleSchema.parse({ fontScale: 0.6 }).fontScale).toBe(0.6)
+    expect(calendarStyleSchema.parse({ fontScale: 2 }).fontScale).toBe(2)
+  })
+
+  it('coerces an out-of-range / non-numeric fontScale to the default (never rejected)', () => {
+    // Out-of-range or garbage values must not reject the record (whole-calendar
+    // wipe); they fall back to the default scale instead.
+    expect(calendarStyleSchema.parse({ fontScale: 5 }).fontScale).toBe(
+      DEFAULT_STYLE.fontScale,
+    )
+    expect(calendarStyleSchema.parse({ fontScale: 0 }).fontScale).toBe(
+      DEFAULT_STYLE.fontScale,
+    )
+    expect(calendarStyleSchema.parse({ fontScale: 'big' }).fontScale).toBe(
+      DEFAULT_STYLE.fontScale,
+    )
   })
 })
 

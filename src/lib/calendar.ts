@@ -50,6 +50,31 @@ export function getWeekdayHeaders(weekStart: WeekStart, lang: Language): string[
   return headers
 }
 
+/**
+ * Full localized weekday name for a `Date.getDay()` index, e.g.
+ * `getWeekdayName(1, 'en')` → "Monday", `getWeekdayName(1, 'cs')` → "pondělí".
+ * Uses the same UTC-anchored date trick as `getWeekdayHeaders` so the result is
+ * time-zone stable.
+ */
+export function getWeekdayName(weekday: WeekStart, lang: Language): string {
+  const date = new Date(SUNDAY_ANCHOR_UTC + weekday * 86_400_000)
+  return new Intl.DateTimeFormat(lang, {
+    weekday: 'long',
+    timeZone: 'UTC',
+  }).format(date)
+}
+
+/**
+ * The footer "week starts on…" label used by the Classic Top month page, e.g.
+ * `getWeekStartLabel(1, 'en')` → "Monday start". Czech reads more naturally as
+ * "Začátek týdne: pondělí", so the wording is localized rather than a literal
+ * translation of the English phrase.
+ */
+export function getWeekStartLabel(weekStart: WeekStart, lang: Language): string {
+  const name = getWeekdayName(weekStart, lang)
+  return lang === 'cs' ? `Začátek týdne: ${name}` : `${name} start`
+}
+
 /** Number of days in the given 0-indexed month. */
 export function getDaysInMonth(year: number, month: number): number {
   // Day 0 of the next month is the last day of this month.

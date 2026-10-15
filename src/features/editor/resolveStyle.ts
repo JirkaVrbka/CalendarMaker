@@ -26,6 +26,8 @@ export interface ResolvedStyle {
   readonly saturday: string
   /** Sunday color (column highlight tint + Sunday day numbers). */
   readonly sunday: string
+  /** Multiplier for the calendar's text sizes (1 = baseline). */
+  readonly fontScale: number
 }
 
 /**
@@ -35,6 +37,17 @@ export interface ResolvedStyle {
  */
 function resolveColor(value: string | undefined, fallback: string): string {
   return value !== undefined && value.trim() !== '' ? value : fallback
+}
+
+/**
+ * A font scale counts as SET only when it is a finite, positive number. A
+ * missing (`undefined`) or invalid (NaN / ≤ 0) value falls back, so a partial
+ * or absent style can never collapse the calendar's text to size 0.
+ */
+function resolveScale(value: number | undefined, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0
+    ? value
+    : fallback
 }
 
 /**
@@ -52,5 +65,6 @@ export function resolveStyle(
     text: resolveColor(style?.textColor, fallback.textColor),
     saturday: resolveColor(style?.saturdayColor, fallback.saturdayColor),
     sunday: resolveColor(style?.sundayColor, fallback.sundayColor),
+    fontScale: resolveScale(style?.fontScale, fallback.fontScale),
   }
 }

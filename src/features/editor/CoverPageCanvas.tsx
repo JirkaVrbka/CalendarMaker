@@ -157,6 +157,7 @@ export function CoverPageCanvas({
     saturdayColor: theme.palette.primary.main,
     sundayColor: theme.palette.error.main,
     backgroundColor: theme.palette.background.paper,
+    fontScale: DEFAULT_STYLE.fontScale,
   })
   const paper = resolved.background
   const titleColor = resolved.text

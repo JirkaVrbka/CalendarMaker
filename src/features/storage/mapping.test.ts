@@ -60,6 +60,19 @@ describe('project record mapping', () => {
     expect(loaded?.style).toEqual(DEFAULT_STYLE)
   })
 
+  it('hydrates a stored style WITHOUT fontScale to the default scale (backward compatible)', () => {
+    // A calendar saved before the font-size feature: its style carries every
+    // color/font but no `fontScale`. The schema default must supply 1 rather
+    // than rejecting the record.
+    const { pages: _pages, style: _style, ...rest } = sampleProject()
+    const { fontScale: _fontScale, ...styleWithoutScale } = DEFAULT_STYLE
+    const config = { ...rest, style: styleWithoutScale }
+    const record = { id: 'current', version: STORAGE_VERSION, config }
+    const loaded = fromProjectRecord(record)
+    expect(loaded).not.toBeNull()
+    expect(loaded?.style.fontScale).toBe(1)
+  })
+
   it('loads a stored record with style:null using the default style (not rejected)', () => {
     // Zod `.default()` only fires on `undefined`; a stored `style: null` must be
     // coerced to the default rather than rejecting the whole record (which would

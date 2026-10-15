@@ -97,6 +97,8 @@ function pageElement(
         weekStart: project.weekStart,
         language: project.language,
         size,
+        title: project.title,
+        subtitle: project.subtitle,
         style: project.style,
         layout: project.layout,
         imageUrl: entry?.url,

@@ -44,13 +44,39 @@ function renderPage() {
 }
 
 describe('MonthPageCanvas', () => {
-  it('renders the month title, weekday headers and day numbers', () => {
+  it('renders the month name, weekday headers and day numbers', () => {
     renderPage()
     expect(screen.getByText('January')).toBeInTheDocument()
-    expect(screen.getByText('Mon')).toBeInTheDocument()
-    expect(screen.getByText('Sun')).toBeInTheDocument()
+    // The restyled Classic Top draws uppercased weekday headers.
+    expect(screen.getByText('MON')).toBeInTheDocument()
+    expect(screen.getByText('SUN')).toBeInTheDocument()
     expect(screen.getByText('15')).toBeInTheDocument()
     expect(screen.getByText('31')).toBeInTheDocument()
+  })
+
+  it('renders the footer wordmark and week-start note', () => {
+    renderPage()
+    expect(screen.getByText('CalendarMaker')).toBeInTheDocument()
+    expect(screen.getByText('MONDAY START')).toBeInTheDocument()
+  })
+
+  it('draws the editorial caption only when a title/subtitle are passed', () => {
+    render(
+      <ThemeProvider theme={createAppTheme('light')}>
+        <MonthPageCanvas
+          year={2024}
+          month={0}
+          weekStart={MONDAY}
+          language="en"
+          size={{ width: 480, height: 679 }}
+          title="Our Mountain Year"
+          subtitle="Adventures & little moments"
+        />
+      </ThemeProvider>,
+    )
+    expect(screen.getByText('Our Mountain Year')).toBeInTheDocument()
+    // The subtitle is drawn uppercased.
+    expect(screen.getByText('ADVENTURES & LITTLE MOMENTS')).toBeInTheDocument()
   })
 
   it('still renders the grid when a photo is present (photo region on top)', () => {

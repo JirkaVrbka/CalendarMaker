@@ -26,6 +26,7 @@ function sampleProps(): MonthLayoutProps {
       text: '#2b2f38',
       saturday: '#4c6ef5',
       sunday: '#e03131',
+      fontScale: 1,
     },
   }
 }
